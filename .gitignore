@@ -3,6 +3,7 @@
 
 # IDE
 .vs/
+*.sln
 
 # Godot 4+ specific ignores
 .godot/
