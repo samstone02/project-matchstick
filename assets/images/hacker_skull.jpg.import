@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://ces5wunixewun"
-path="res://.godot/imported/hacker_skull.jpg-c7f13586ff80555c35ca640be250cd90.ctex"
+path="res://.godot/imported/hacker_skull.jpg-6580b8a7c5da4e3e4fc518a9a6b638e7.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://src/assets/images/hacker_skull.jpg"
-dest_files=["res://.godot/imported/hacker_skull.jpg-c7f13586ff80555c35ca640be250cd90.ctex"]
+source_file="res://assets/images/hacker_skull.jpg"
+dest_files=["res://.godot/imported/hacker_skull.jpg-6580b8a7c5da4e3e4fc518a9a6b638e7.ctex"]
 
 [params]
 
