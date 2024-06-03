@@ -34,9 +34,6 @@ public partial class GeneratorNode : Node
             gen0.TerrainId = TerrainIds.VOID; // 4 = void rn
             gen0.Generate(TileMap, tc, bc);
 
-            //var gen1 = new MiddleMountainMapGenerator();
-            //gen1.Generate(TileMap, MaxX, MaxY);
-
             var gen2 = new WfcGenerationStep(null, Seed);
             gen2.Generate(TileMap, tc, bc);
 
