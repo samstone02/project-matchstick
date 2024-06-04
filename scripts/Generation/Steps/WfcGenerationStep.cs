@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace ProjectMatchstick.scripts.Generation.Strategies;
+namespace ProjectMatchstick.Generation.Strategies;
 
 public class WfcGenerationStep : IGenerationStep
 {

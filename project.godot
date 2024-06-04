@@ -12,7 +12,8 @@ config_version=5
 
 config/name="Project Matchstick"
 config/version="0.0.0"
-config/features=PackedStringArray("4.2", "Forward Plus")
+run/main_scene="res://scenes/test_terrain_generation.tscn"
+config/features=PackedStringArray("4.2", "C#", "Forward Plus")
 
 [dotnet]
 

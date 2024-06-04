@@ -1,10 +1,7 @@
-﻿namespace Matchstick.Generation;
+﻿namespace ProjectMatchstick.Generation;
 
 using Godot;
-using Matchstick.Generation.Steps;
 using ProjectMatchstick.Generation.Strategies;
-using ProjectMatchstick.scripts.Generation;
-using ProjectMatchstick.scripts.Generation.Strategies;
 using System.Threading.Tasks;
 
 public partial class GeneratorNode : Node
@@ -31,7 +28,7 @@ public partial class GeneratorNode : Node
             var bc = new Vector2I(20, 20);
 
             var gen0 = new UniformGenerationStep();
-            gen0.TerrainId = TerrainIds.VOID; // 4 = void rn
+            gen0.TerrainId = TerrainIds.VOID;
             gen0.Generate(TileMap, tc, bc);
 
             var gen2 = new WfcGenerationStep(null, Seed);
