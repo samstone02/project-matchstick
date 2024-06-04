@@ -10,118 +10,205 @@ public class WfcGenerationStep : IGenerationStep
 {
     public struct TerrainRule
     {
-        public int NeighborTerrainId;
+        public TerrainId NeighborTerrainId;
         public double Weight;
 
-        public TerrainRule(int neighborTerrainId, double percentage)
+        public TerrainRule(TerrainId neighborTerrainId, double percentage)
         {
             NeighborTerrainId = neighborTerrainId;
             Weight = percentage;
         }
     }
 
+    private TerrainId FallbackTerrain { get; }
+
     private Random Random { get; }
 
-    private List<List<TerrainRule>> RuleSet = new()
+    private Dictionary<TerrainId, List<TerrainRule>> RuleSet = new()
     {
-        { new List<TerrainRule> { new(0, 0.75), new(1, 0.1) } }, // Water
-        { new List<TerrainRule> { new(0, 0.25), new(1, 1.0), new(2, 0.5) } }, // Land
-        { new List<TerrainRule> { new(1, 0.25), new(2, 0.75) } } // Cliff
+        { TerrainId.VOID, new List<TerrainRule> { new(TerrainId.WATER, 0.33), new(TerrainId.LAND, 0.33), new(TerrainId.WALL, 0.33) } },
+        { TerrainId.WATER, new List<TerrainRule> { new(TerrainId.WATER, 0.75), new(TerrainId.LAND, 0.1) } },
+        { TerrainId.LAND, new List<TerrainRule> { new(TerrainId.WATER, 0.25), new(TerrainId.LAND, 1.0), new(TerrainId.WALL, 0.5) } },
+        { TerrainId.WALL, new List<TerrainRule> { new(TerrainId.LAND, 0.25), new(TerrainId.WALL, 0.75) } } 
     };
 
-    public WfcGenerationStep(List<List<TerrainRule>> ruleSet, int seed)
+    public WfcGenerationStep(List<List<TerrainRule>> ruleSet, int seed, TerrainId fallbackTerrain)
     {
         Random = new Random(seed);
+        FallbackTerrain = fallbackTerrain;
     }
 
     public void Generate(TileMap tileMap, Vector2I topCorner, Vector2I bottomCorner)
     {
-        List<Vector2I> voidCells = tileMap.GetUsedCells(0).Where(vec => tileMap.GetCellTileData(0, vec).Terrain == TerrainIds.VOID).ToList();
+        List<Vector2I> voidCells = tileMap.GetUsedCells(0).Where(vec => (TerrainId)tileMap.GetCellTileData(0, vec).Terrain == TerrainId.VOID).ToList();
+
+        var terrainMap = new TerrainId[Math.Abs(topCorner.X) + Math.Abs(bottomCorner.X) + 1, Math.Abs(topCorner.Y) + Math.Abs(bottomCorner.Y) + 1];
 
         while (voidCells.Count > 0)
         {
-            (Vector2I cell, List<int> allowedTerrains) = GetLeastChaoticCell(tileMap, voidCells, topCorner, bottomCorner);
+            (Vector2I cell, List<TerrainId> allowedTerrains) = GetLeastChaoticCell(tileMap, terrainMap, voidCells, topCorner, bottomCorner);
 
-            int selectedTerrarin = SelectRandomTerrain(tileMap, cell, allowedTerrains);
+            TerrainId selectedTerrarin = SelectRandomTerrain(tileMap, cell, allowedTerrains);
 
-            tileMap.SetCellsTerrainConnect(0, new Godot.Collections.Array<Vector2I> { cell }, 0, selectedTerrarin); // fix
+            terrainMap[cell.X - topCorner.X, cell.Y - topCorner.Y] = selectedTerrarin;
 
             voidCells.Remove(cell);
         }
+
+        var terrainsToSet = GetTerrainsDictionary(terrainMap, topCorner);
+
+        foreach (var kv in terrainsToSet)
+        {
+            tileMap.SetCellsTerrainConnect(0, kv.Value, 0, (int)kv.Key);
+        }
     }
 
-    private (Vector2I, List<int>) GetLeastChaoticCell(TileMap tileMap, List<Vector2I> emptyCells, Vector2I topCorner, Vector2I bottomCorner)
+    private Dictionary<TerrainId, Godot.Collections.Array<Vector2I>> GetTerrainsDictionary(TerrainId[,] terrainMap, Vector2I topCorner)
+    {
+        var terrainsToSet = new Dictionary<TerrainId, Godot.Collections.Array<Vector2I>>();
+
+        for (int i = 0; i < terrainMap.GetLength(0); i++)
+        {
+            for (int j = 0; j < terrainMap.GetLength(1); j++)
+            {
+                if (!terrainsToSet.TryGetValue(terrainMap[i,j], out var _))
+                {
+                    terrainsToSet[terrainMap[i, j]] = new();
+                }
+
+                terrainsToSet[terrainMap[i, j]].Add(new Vector2I(i + topCorner.X, j + topCorner.Y));
+            }
+        }
+
+        return terrainsToSet;
+    }
+
+    private (Vector2I, List<TerrainId>) GetLeastChaoticCell(TileMap tileMap, TerrainId[,] terrainMap, List<Vector2I> emptyCells, Vector2I topCorner, Vector2I bottomCorner)
     {
         var leastChaoticCell = Vector2I.Zero;
 
-        var allowedTerrains = new List<int>();
+        HashSet<TerrainId> allowedTerrains = null;
 
         foreach (Vector2I cell in emptyCells)
         {
-            List<int> candidateAllowedTerrains = GetAllowedTerrrains(tileMap, cell, topCorner, bottomCorner);
+            HashSet<TerrainId> candidateAllowedTerrains = GetAllowedTerrrains(tileMap, terrainMap, cell, topCorner, bottomCorner);
 
-            if (allowedTerrains.Count == 0 || candidateAllowedTerrains.Count < allowedTerrains.Count)
+            if (candidateAllowedTerrains != null && candidateAllowedTerrains.Count == 0)
+            {
+                GD.Print($"Cell {cell} not allowed to have any neighbors.");
+                continue;
+            }
+
+            if (allowedTerrains == null || candidateAllowedTerrains.Count < allowedTerrains.Count)
             {
                 leastChaoticCell = cell;
                 allowedTerrains = candidateAllowedTerrains;
             }
         }
 
-        return (leastChaoticCell, allowedTerrains);
+        return (leastChaoticCell, (allowedTerrains == null)? new() : allowedTerrains.ToList());
     }
 
-    public List<int> GetAllowedTerrrains(TileMap tileMap, Vector2I candidate, Vector2I topCorner, Vector2I bottomCorner)
+    private HashSet<TerrainId> GetAllowedTerrrains(TileMap tileMap, TerrainId[,] terrainMap, Vector2I candidate, Vector2I topCorner, Vector2I bottomCorner)
     {
-        var numsAllowedBy = new int[RuleSet.Count]; // index = terrainSourceId, value = numberOfNeighborsWhichAllowThisTerrain
+        var countsTerrainsAllowedByNeighbors = new Dictionary<TerrainId, int>(); // value = numberOfNeighborsWhichAllowThisTerrain
 
-        foreach (Vector2I neighbor in tileMap.GetSurroundingCells(candidate))
+        int numNeighbors = 0;
+
+        for (int i = Math.Max(0, candidate.X - topCorner.X - 1); i <= Math.Min(terrainMap.GetLength(0) - 1, candidate.X - topCorner.X + 1); i++)
         {
-            if (neighbor.Y < topCorner.Y || neighbor.Y > bottomCorner.Y || neighbor.X < topCorner.X || neighbor.X > bottomCorner.X)
+            for (int j = Math.Max(0, candidate.Y - topCorner.Y - 1); j <= Math.Min(terrainMap.GetLength(1) - 1, candidate.Y - topCorner.Y + 1); j++)
             {
-                continue;
-            }
-
-            var neighborTerrainId = tileMap.GetCellTileData(0, neighbor).Terrain;
-
-            if (neighborTerrainId == TerrainIds.VOID)
-            {
-                for (int i = 0; i < numsAllowedBy.Length; i++)
+                if (!IsNeighbor(tileMap, i, j, candidate - topCorner))
                 {
-                    numsAllowedBy[i]++;
+                    continue;
                 }
 
-                continue;
-            }
+                numNeighbors++;
 
-            var terrainsAllowedByNeighbor = RuleSet[neighborTerrainId];
+                if (terrainMap[i,j] == TerrainId.VOID)
+                {
+                    foreach (var terrainId in RuleSet.Keys)
+                    {
+                        if (terrainId == TerrainId.VOID)
+                        {
+                            continue;
+                        }
 
-            foreach (TerrainRule terrainRule in terrainsAllowedByNeighbor)
-            {
-                numsAllowedBy[terrainRule.NeighborTerrainId]++;
+                        if (countsTerrainsAllowedByNeighbors.TryGetValue(terrainId, out var _))
+                        {
+                            countsTerrainsAllowedByNeighbors[terrainId]++;
+                        }
+                        else
+                        {
+                            countsTerrainsAllowedByNeighbors[terrainId] = 1;
+                        }
+                    }
+
+                    continue;
+                }
+
+                var terrainsAllowedByNeighbor = RuleSet[terrainMap[i,j]];
+
+                foreach (TerrainRule terrainRule in terrainsAllowedByNeighbor)
+                {
+                    if (countsTerrainsAllowedByNeighbors.TryGetValue(terrainRule.NeighborTerrainId, out var _))
+                    {
+                        countsTerrainsAllowedByNeighbors[terrainRule.NeighborTerrainId]++;
+                    }
+                    else
+                    {
+                        countsTerrainsAllowedByNeighbors[terrainRule.NeighborTerrainId] = 1;
+                    }
+                }
             }
         }
 
-        var goodNeighbors = new List<int>();
+        var terrainsAllowedByAllNeighbors = new HashSet<TerrainId>();
 
-        int numNeighbors = 4; // (tileMap.TileSet.GetTerrainSetMode(0) == TileSet.TerrainMode.CornersAndSides) ? 8 : 4; 
-
-        for (int i = 0; i < numsAllowedBy.Length; i++)
+        foreach (var terrainCount in countsTerrainsAllowedByNeighbors)
         {
-            if (numsAllowedBy[i] == numNeighbors)
+            if (terrainCount.Value == numNeighbors)
             {
-                goodNeighbors.Add(i);
+                terrainsAllowedByAllNeighbors.Add(terrainCount.Key);
             }
         }
 
-        return goodNeighbors;
+        return terrainsAllowedByAllNeighbors;
     }
 
-    private int SelectRandomTerrain(TileMap tileMap, Vector2I cell, List<int> allowedTerrains)
+    private bool IsNeighbor(TileMap tileMap, int x, int y, Vector2I candidate)
+    {
+        static bool IsCorner(int x, int y, Vector2I candidate)
+            => x != candidate.X && y != candidate.Y;
+
+        static bool IsSide(int x, int y, Vector2I candidate)
+            => x == candidate.X ^ y == candidate.Y;
+        
+        if (x == candidate.X && y == candidate.Y)
+        {
+            return false;
+        }
+
+        if (tileMap.TileSet.GetTerrainSetMode(0) == TileSet.TerrainMode.Sides && IsCorner(x, y, candidate))
+        {
+            return false;
+        }
+
+        if (tileMap.TileSet.GetTerrainSetMode(0) == TileSet.TerrainMode.Corners && IsSide(x, y, candidate))
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    private TerrainId SelectRandomTerrain(TileMap tileMap, Vector2I cell, List<TerrainId> allowedTerrains)
     {
         if (allowedTerrains.Count == 0)
         {
-            GD.Print("No terrain is allowed at: " + cell + ". Defaulting to Cliff.");
-            return 2;
+            GD.Print($"No terrain is allowed at: {cell}. Falling back to {nameof(FallbackTerrain)}");
+            return FallbackTerrain;
         }
 
         /* Get allowed neighboring tile's sum weight */
@@ -130,7 +217,7 @@ public class WfcGenerationStep : IGenerationStep
         {
             foreach (var neighborId in tileMap.GetSurroundingCells(cell).Select(coords => tileMap.GetCellSourceId(0, coords)).Where(id => id > 0))
             {
-                sumWeights[terrainId] += RuleSet[neighborId][terrainId].Weight;
+                sumWeights[(int)terrainId] += RuleSet[(TerrainId)neighborId][(int)terrainId].Weight;
             }
         }
 
@@ -144,7 +231,7 @@ public class WfcGenerationStep : IGenerationStep
 
         if (prefixSum[prefixSum.Length - 1] == 0)
         {
-            return allowedTerrains[Random.Next(allowedTerrains.Count)];
+            return (TerrainId)allowedTerrains[Random.Next(allowedTerrains.Count)];
         }
 
         double r = Random.Next() * prefixSum[prefixSum.Length - 1];
@@ -152,7 +239,7 @@ public class WfcGenerationStep : IGenerationStep
         {
             if (prefixSum[i] > r)
             {
-                return allowedTerrains[i];
+                return (TerrainId)allowedTerrains[i];
             }
         }
 

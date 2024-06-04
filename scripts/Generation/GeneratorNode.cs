@@ -28,10 +28,9 @@ public partial class GeneratorNode : Node
             var bc = new Vector2I(20, 20);
 
             var gen0 = new UniformGenerationStep();
-            gen0.TerrainId = TerrainIds.VOID;
             gen0.Generate(TileMap, tc, bc);
 
-            var gen2 = new WfcGenerationStep(null, Seed);
+            var gen2 = new WfcGenerationStep(null, Seed, TerrainId.VOID);
             gen2.Generate(TileMap, tc, bc);
 
             GD.Print("Finished Generating");

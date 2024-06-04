@@ -8,7 +8,7 @@ namespace ProjectMatchstick.Generation.Strategies;
 /// </summary>
 public class UniformGenerationStep : IGenerationStep
 {
-    public int TerrainId = 0;
+    public TerrainId TerrainId = TerrainId.VOID;
 
     public void Generate(TileMap tileMap, Vector2I topCorner, Vector2I bottomCorner)
     {
@@ -22,6 +22,6 @@ public class UniformGenerationStep : IGenerationStep
             }
         }
 
-        tileMap.SetCellsTerrainConnect(0, tiles, 0, TerrainId);
+        tileMap.SetCellsTerrainConnect(0, tiles, 0, (int)TerrainId);
     }
 }
