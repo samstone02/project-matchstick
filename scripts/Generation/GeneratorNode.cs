@@ -7,13 +7,13 @@ using System.Threading.Tasks;
 public partial class GeneratorNode : Node
 {
     [Export]
-    public int MaxX { get; set; } = 40;
+    public int MaxX { get; set; }
 
     [Export]
-    public int MaxY { get; set; } = 40;
+    public int MaxY { get; set; }
 
     [Export]
-    public int Seed { get; set; } = -1;
+    public int Seed { get; set; }
 
     [Export]
     TileMap TileMap { get; set; }
@@ -24,8 +24,8 @@ public partial class GeneratorNode : Node
         {
             GD.Print("Generating...");
 
-            var tc = new Vector2I(-20, -20);
-            var bc = new Vector2I(20, 20);
+            var tc = new Vector2I(0, 0);
+            var bc = new Vector2I(MaxX, MaxY);
 
             var gen0 = new UniformGenerationStep();
             gen0.Generate(TileMap, tc, bc);

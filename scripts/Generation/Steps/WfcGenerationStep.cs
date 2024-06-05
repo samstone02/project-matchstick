@@ -26,10 +26,10 @@ public class WfcGenerationStep : IGenerationStep
 
     private Dictionary<TerrainId, List<TerrainRule>> RuleSet = new()
     {
-        { TerrainId.VOID, new List<TerrainRule> { new(TerrainId.WATER, 0.33), new(TerrainId.LAND, 0.33), new(TerrainId.WALL, 0.33) } },
-        { TerrainId.WATER, new List<TerrainRule> { new(TerrainId.WATER, 0.75), new(TerrainId.LAND, 0.1) } },
-        { TerrainId.LAND, new List<TerrainRule> { new(TerrainId.WATER, 0.25), new(TerrainId.LAND, 1.0), new(TerrainId.WALL, 0.5) } },
-        { TerrainId.WALL, new List<TerrainRule> { new(TerrainId.LAND, 0.25), new(TerrainId.WALL, 0.75) } } 
+        { TerrainId.VOID, new List<TerrainRule> { new(TerrainId.WATER, 0.3), new(TerrainId.LAND, 0.3), new(TerrainId.WALL, 0.3) } },
+        { TerrainId.WATER, new List<TerrainRule> { new(TerrainId.WATER, 2.0), new(TerrainId.LAND, 0.25) } },
+        { TerrainId.LAND, new List<TerrainRule> { new(TerrainId.WATER, 0.5), new(TerrainId.LAND, 6.0), new(TerrainId.WALL, 1.0) } },
+        { TerrainId.WALL, new List<TerrainRule> { new(TerrainId.LAND, 0.5), new(TerrainId.WALL, 2.0) } } 
     };
 
     public WfcGenerationStep(List<List<TerrainRule>> ruleSet, int seed, TerrainId fallbackTerrain)
@@ -53,14 +53,16 @@ public class WfcGenerationStep : IGenerationStep
             terrainMap[cell.X - topCorner.X, cell.Y - topCorner.Y] = selectedTerrarin;
 
             voidCells.Remove(cell);
+
+            tileMap.SetCellsTerrainConnect(0, new Godot.Collections.Array<Vector2I> { cell }, 0, (int)selectedTerrarin);
         }
 
-        var terrainsToSet = GetTerrainsDictionary(terrainMap, topCorner);
+        //var terrainsToSet = GetTerrainsDictionary(terrainMap, topCorner);
 
-        foreach (var kv in terrainsToSet)
-        {
-            tileMap.SetCellsTerrainConnect(0, kv.Value, 0, (int)kv.Key);
-        }
+        //foreach (var kv in terrainsToSet)
+        //{
+        //    tileMap.SetCellsTerrainConnect(0, kv.Value, 0, (int)kv.Key);
+        //}
     }
 
     private Dictionary<TerrainId, Godot.Collections.Array<Vector2I>> GetTerrainsDictionary(TerrainId[,] terrainMap, Vector2I topCorner)
@@ -212,17 +214,20 @@ public class WfcGenerationStep : IGenerationStep
         }
 
         /* Get allowed neighboring tile's sum weight */
-        var sumWeights = new double[allowedTerrains.Count];
+        var sumWeights = new double[(int)Enum.GetValues(typeof(TerrainId)).Cast<TerrainId>().Last() + 1];
         foreach (var terrainId in allowedTerrains)
         {
-            foreach (var neighborId in tileMap.GetSurroundingCells(cell).Select(coords => tileMap.GetCellSourceId(0, coords)).Where(id => id > 0))
+            foreach (var neighborTerrainId in tileMap.GetSurroundingCells(cell)
+                .Where(neighbor =>
+                    tileMap.GetCellSourceId(0, neighbor) >= 0)
+                .Select(neighbor => (TerrainId)tileMap.GetCellTileData(0, neighbor).Terrain))
             {
-                sumWeights[(int)terrainId] += RuleSet[(TerrainId)neighborId][(int)terrainId].Weight;
+                sumWeights[(int)terrainId] += RuleSet[neighborTerrainId].Where(nid => nid.NeighborTerrainId == terrainId).FirstOrDefault().Weight;
             }
         }
 
         /* Get prefix sum from sumWeights */
-        var prefixSum = new double[sumWeights.Length];
+        var prefixSum = new double[(int)Enum.GetValues(typeof(TerrainId)).Cast<TerrainId>().Last() + 1];
         for (int i = 0; i < prefixSum.Length; i++)
         {
             double previousSum = i == 0 ? 0 : prefixSum[i - 1];
@@ -231,15 +236,15 @@ public class WfcGenerationStep : IGenerationStep
 
         if (prefixSum[prefixSum.Length - 1] == 0)
         {
-            return (TerrainId)allowedTerrains[Random.Next(allowedTerrains.Count)];
+            return allowedTerrains[Random.Next(allowedTerrains.Count)];
         }
 
-        double r = Random.Next() * prefixSum[prefixSum.Length - 1];
+        double r = Random.NextDouble() * prefixSum[prefixSum.Length - 1];
         for (int i = 0; i < prefixSum.Length; i++)
         {
             if (prefixSum[i] > r)
             {
-                return (TerrainId)allowedTerrains[i];
+                return allowedTerrains.Where(t => t == (TerrainId)i).FirstOrDefault();
             }
         }
 

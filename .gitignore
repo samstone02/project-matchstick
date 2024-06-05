@@ -1,10 +1,14 @@
 # git
 .git
 
-# IDE
+# Visual Studio
 .vs/
 *.sln
 
-# Godot 4+ specific ignores
+# Godot 4+
 .godot/
 *.*.import
+
+# Krita
+*.png~
+*.png.kra

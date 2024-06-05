@@ -1,10 +1,10 @@
 [gd_scene load_steps=5 format=3 uid="uid://cnx7ot8cb4ms8"]
 
-[ext_resource type="Script" path="res://scripts/Generation/GeneratorNode.cs" id="1_1kgnc"]
-[ext_resource type="Texture2D" uid="uid://dt4bhimosl652" path="res://assets/images/tilesets/test_iso_tileset.png" id="2_bfm82"]
+[ext_resource type="Script" path="res://scripts/Generation/GeneratorNode.cs" id="1_mmas0"]
+[ext_resource type="Texture2D" uid="uid://dt4bhimosl652" path="res://assets/images/tilesets/test_iso_tileset.png" id="2_vfuuk"]
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_6nctq"]
-texture = ExtResource("2_bfm82")
+texture = ExtResource("2_vfuuk")
 texture_region_size = Vector2i(32, 32)
 10:1/0 = 0
 10:1/0/texture_origin = Vector2i(0, 8)
@@ -298,7 +298,7 @@ texture_region_size = Vector2i(32, 32)
 0:0/0/terrains_peering_bit/top_right_side = 1
 
 [sub_resource type="TileSet" id="TileSet_jhxgx"]
-tile_shape = 1
+tile_shape = 3
 tile_layout = 5
 tile_size = Vector2i(32, 16)
 terrain_set_0/mode = 2
@@ -312,10 +312,10 @@ terrain_set_0/terrain_3/name = "Wall"
 terrain_set_0/terrain_3/color = Color(0.146865, 0.482213, 0.869673, 1)
 sources/0 = SubResource("TileSetAtlasSource_6nctq")
 
-[node name="TestTerrainGeneration" type="Node2D"]
+[node name="TestIsoTerrainGeneration" type="Node2D"]
 
 [node name="GeneratorNode" type="Node" parent="." node_paths=PackedStringArray("TileMap")]
-script = ExtResource("1_1kgnc")
+script = ExtResource("1_mmas0")
 TileMap = NodePath("../TileMap")
 
 [node name="TileMap" type="TileMap" parent="."]
