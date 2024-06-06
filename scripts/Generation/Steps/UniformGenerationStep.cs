@@ -1,5 +1,7 @@
 ﻿using Godot;
+using ProjectMatchstick.Generation.Shapes;
 using ProjectMatchstick.Generation.Steps;
+using System.Collections.Generic;
 
 namespace ProjectMatchstick.Generation.Strategies;
 
@@ -10,18 +12,30 @@ public class UniformGenerationStep : IGenerationStep
 {
     public TerrainId TerrainId = TerrainId.VOID;
 
-    public void Generate(TileMap tileMap, Vector2I topCorner, Vector2I bottomCorner)
+    public void Generate(TileMap tileMap, IShape generationShape, GenerationRenderMode mode)
+    {
+        throw new System.NotImplementedException();
+    }
+
+    public void Generate(TileMap tileMap, List<Vector2I> cellsToFill, GenerationRenderMode mode)
     {
         var tiles = new Godot.Collections.Array<Vector2I>();
 
-        for (int i = topCorner.X; i <= bottomCorner.X; i++)
+        foreach (var cell in cellsToFill)
         {
-            for (int j = topCorner.Y; j <= bottomCorner.Y; j++)
+            if (mode == GenerationRenderMode.IMMEDIATE)
             {
-                tiles.Add(new(i, j));
+                tileMap.SetCellsTerrainConnect(0, new Godot.Collections.Array<Vector2I> { cell }, 0, (int)TerrainId);
+            }
+            else
+            {
+                tiles.Add(cell);
             }
         }
 
-        tileMap.SetCellsTerrainConnect(0, tiles, 0, (int)TerrainId);
+        if (mode == GenerationRenderMode.ON_STEP_COMPLETE)
+        {
+            tileMap.SetCellsTerrainConnect(0, tiles, 0, (int)TerrainId);
+        }
     }
 }
