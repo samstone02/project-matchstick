@@ -2,6 +2,7 @@
 
 public enum TerrainId
 {
+    NOTHING = -1,
     VOID,
     WATER,
     LAND,

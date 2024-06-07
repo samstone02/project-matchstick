@@ -3,6 +3,7 @@
 using Godot;
 using ProjectMatchstick.Generation.Strategies;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Threading.Tasks;
 
 public partial class GeneratorNode : Node
@@ -29,7 +30,10 @@ public partial class GeneratorNode : Node
     {
         Task.Run(() =>
         {
+            Stopwatch sw = Stopwatch.StartNew();
+
             GD.Print("Generating...");
+            sw.Start();
 
             var tiles = new List<Vector2I>();
 
@@ -42,12 +46,17 @@ public partial class GeneratorNode : Node
             }
 
             var gen0 = new UniformGenerationStep();
-            gen0.Generate(TileMap, tiles, GenerationRenderMode.ON_STEP_COMPLETE);
+            gen0.Generate(TileMap, tiles, GenerationRenderMode.IMMEDIATE);
 
-            var gen2 = new WfcGenerationStep(null, Seed, TerrainId.VOID);
-            gen2.Generate(TileMap, tiles, GenerationRenderMode.ON_STEP_COMPLETE);
+            TileMap.SetCellsTerrainConnect(0, new Godot.Collections.Array<Vector2I> { new(0, 0) }, 0, (int)TerrainId.WALL);
 
+            var gen2 = new WfcGenerationStep(null, Seed, TerrainId.VOID, new HashSet<TerrainId>{ TerrainId.VOID });
+            gen2.Generate(TileMap, tiles, GenerationRenderMode.IMMEDIATE);
+
+            sw.Stop();
             GD.Print("Finished Generating");
+
+            GD.Print("Total Time for IMMEDIATE: " + sw.Elapsed.TotalSeconds);
         });
     }
 }

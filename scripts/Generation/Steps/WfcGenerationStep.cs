@@ -25,8 +25,8 @@ public class WfcGenerationStep : IGenerationStep
     }
 
     private TerrainId FallbackTerrain { get; }
-
     private Random Random { get; }
+    private HashSet<TerrainId> BackgroundTerrains { get; }
 
     private Dictionary<TerrainId, List<TerrainRule>> RuleSet = new()
     {
@@ -36,10 +36,11 @@ public class WfcGenerationStep : IGenerationStep
         { TerrainId.WALL, new List<TerrainRule> { new(TerrainId.LAND, 0.5), new(TerrainId.WALL, 2.0) } } 
     };
 
-    public WfcGenerationStep(List<List<TerrainRule>> ruleSet, int seed, TerrainId fallbackTerrain)
+    public WfcGenerationStep(List<List<TerrainRule>> ruleSet, int seed, TerrainId fallbackTerrain, HashSet<TerrainId> backgroundTerrains)
     {
         Random = new Random(seed);
         FallbackTerrain = fallbackTerrain;
+        BackgroundTerrains = backgroundTerrains;
     }
 
     public void Generate(TileMap tileMap, IShape shape, GenerationRenderMode mode)
@@ -47,28 +48,36 @@ public class WfcGenerationStep : IGenerationStep
         Generate(tileMap, shape.ToList(), mode);
     }
 
-    public void Generate(TileMap tileMap, List<Vector2I> cellsToFill, GenerationRenderMode mode)
+    public void Generate(TileMap tileMap, List<Vector2I> targetCellsList, GenerationRenderMode mode)
     {
-        // List<Vector2I> voidCells = tileMap.GetUsedCells(0).Where(vec => (TerrainId)tileMap.GetCellTileData(0, vec).Terrain == TerrainId.VOID).ToList();
+        /*
+         * terrainMap: the current state of the level
+         * frontier: the list of cells which WFC will analyze for chaos, then pick the least chaotic cell
+         * targetCells: the set of cells which are available to fill but haven't yet
+         */
 
-        // var terrainMap = new TerrainId[Math.Abs(topCorner.X) + Math.Abs(bottomCorner.X) + 1, Math.Abs(topCorner.Y) + Math.Abs(bottomCorner.Y) + 1];
+        var terrainMap = targetCellsList
+            .ToDictionary(
+                vec => vec,
+                vec => (tileMap.GetCellSourceId(0, vec) == -1) ? TerrainId.NOTHING : (TerrainId)tileMap.GetCellTileData(0, vec).Terrain);
+        var targetCellsSet = new HashSet<Vector2I>(targetCellsList);
+        var frontier = InitializeFrontier(tileMap, terrainMap, targetCellsList, targetCellsSet);
 
-        var terrainMap = cellsToFill.ToDictionary(vec => vec, vec => (TerrainId)tileMap.GetCellTileData(0, vec).Terrain);
-
-        while (cellsToFill.Count > 0)
+        while (frontier.Count > 0)
         {
-            (Vector2I cell, List<TerrainId> allowedTerrains) = GetLeastChaoticCell(tileMap, terrainMap, cellsToFill, tileMap.TileSet.GetTerrainSetMode(0));
-
+            (Vector2I cell, List<TerrainId> allowedTerrains, LinkedListNode<Vector2I> node) = GetLeastChaoticCell(tileMap, terrainMap, frontier);
             TerrainId selectedTerrarin = SelectRandomTerrain(tileMap, terrainMap, cell, allowedTerrains);
-
-            cellsToFill.Remove(cell);
-
-            terrainMap[cell] = selectedTerrarin;
 
             if (mode == GenerationRenderMode.IMMEDIATE)
             {
                 tileMap.SetCellsTerrainConnect(0, new Godot.Collections.Array<Vector2I> { cell }, 0, (int)selectedTerrarin);
             }
+
+            terrainMap[cell] = selectedTerrarin;
+            ExpandFrontier(ref frontier, tileMap, cell, terrainMap, targetCellsSet);
+
+            frontier.Remove(node);
+            targetCellsSet.Remove(cell);
         }
 
         if (mode == GenerationRenderMode.ON_STEP_COMPLETE)
@@ -83,15 +92,61 @@ public class WfcGenerationStep : IGenerationStep
         }
     }
 
-    private (Vector2I, List<TerrainId>) GetLeastChaoticCell(TileMap tileMap, Dictionary<Vector2I, TerrainId> terrainMap, List<Vector2I> cellsToFill, TileSet.TerrainMode terrainSetMode)
+    private LinkedList<Vector2I> InitializeFrontier(TileMap tileMap, Dictionary<Vector2I, TerrainId> terrainMap, List<Vector2I> targetCellsList, HashSet<Vector2I> targetCellsSet)
+    {
+        var frontier = new LinkedList<Vector2I>();
+
+        foreach (Vector2I cell in targetCellsList)
+        {
+            var isFilled = terrainMap.TryGetValue(cell, out TerrainId thisTerrain);
+            if (!isFilled || BackgroundTerrains.Contains(thisTerrain))
+            {
+                continue;
+            }
+
+            foreach (var neighbor in tileMap.GetSurroundingCells(cell))
+            {
+                terrainMap.TryGetValue(neighbor, out var neighborTerrain);
+                if (targetCellsSet.Contains(neighbor) && BackgroundTerrains.TryGetValue(neighborTerrain, out var _))
+                {
+                    frontier.AddFirst(neighbor);
+                }
+            }
+
+            targetCellsSet.Remove(cell);
+        }
+
+        return frontier;
+    }
+
+    private void ExpandFrontier(ref LinkedList<Vector2I> frontier, TileMap tileMap, Vector2I cell, Dictionary<Vector2I, TerrainId> terrainMap, HashSet<Vector2I> targetCells)
+    {
+        foreach (var neighbor in tileMap.GetSurroundingCells(cell))
+        {
+            terrainMap.TryGetValue(neighbor, out var terrain);
+
+            if (BackgroundTerrains.Contains(terrain) && targetCells.Contains(neighbor) && !frontier.Contains(neighbor))
+            {
+                frontier.AddLast(neighbor);
+            }
+        }
+
+        targetCells.Remove(cell);
+    }
+
+    private (Vector2I, List<TerrainId>, LinkedListNode<Vector2I>) GetLeastChaoticCell(TileMap tileMap, Dictionary<Vector2I, TerrainId> terrainMap, LinkedList<Vector2I> frontier)
     {
         var leastChaoticCell = Vector2I.Zero;
+        var leastChaoticCellNode = new LinkedListNode<Vector2I>(new(0, 0));
+        List<TerrainId> allowedTerrains = null;
 
-        HashSet<TerrainId> allowedTerrains = null;
+        var node = frontier.First;
 
-        foreach (Vector2I cell in cellsToFill)
+        while (node != null)
         {
-            HashSet<TerrainId> candidateAllowedTerrains = GetAllowedTerrrains(tileMap, terrainMap, cell, terrainSetMode);
+            var cell = node.Value;
+
+            List<TerrainId> candidateAllowedTerrains = GetAllowedTerrrains(tileMap, terrainMap, cell);
 
             if (candidateAllowedTerrains != null && candidateAllowedTerrains.Count == 0)
             {
@@ -102,14 +157,17 @@ public class WfcGenerationStep : IGenerationStep
             if (allowedTerrains == null || candidateAllowedTerrains.Count < allowedTerrains.Count)
             {
                 leastChaoticCell = cell;
+                leastChaoticCellNode = node;
                 allowedTerrains = candidateAllowedTerrains;
             }
+
+            node = node.Next;
         }
 
-        return (leastChaoticCell, (allowedTerrains == null)? new() : allowedTerrains.ToList());
+        return (leastChaoticCell, allowedTerrains ?? new(), leastChaoticCellNode);
     }
 
-    private HashSet<TerrainId> GetAllowedTerrrains(TileMap tileMap, Dictionary<Vector2I, TerrainId> terrainMap, Vector2I cell, TileSet.TerrainMode terrainSetMode)
+    private List<TerrainId> GetAllowedTerrrains(TileMap tileMap, Dictionary<Vector2I, TerrainId> terrainMap, Vector2I cell)
     {
         IEnumerable<Vector2I> neighbors = tileMap.GetSurroundingCells(cell).Where(neighbor => terrainMap.TryGetValue(neighbor, out var _));
         var countsTerrainsAllowedByNeighbors = new Dictionary<TerrainId, int>(); // value = numberOfNeighborsWhichAllowThisTerrain
@@ -128,7 +186,7 @@ public class WfcGenerationStep : IGenerationStep
             }
         }
 
-        var terrainsAllowedByAllNeighbors = new HashSet<TerrainId>();
+        var terrainsAllowedByAllNeighbors = new List<TerrainId>();
 
         foreach (var terrainCount in countsTerrainsAllowedByNeighbors)
         {
@@ -151,12 +209,12 @@ public class WfcGenerationStep : IGenerationStep
 
         /* Get allowed neighboring tile's sum weight */
         
-        var sumWeights = new double[(int)Enum.GetValues(typeof(TerrainId)).Cast<TerrainId>().Last() + 1];
+        var sumWeights = new double[(int)Enum.GetValues(typeof(TerrainId)).Cast<TerrainId>().Max() + 1];
         
         foreach (var terrainId in allowedTerrains)
         {
             foreach (var neighborTerrainId in tileMap.GetSurroundingCells(cell)
-                .Where(neighbor => terrainMap.TryGetValue(neighbor, out var _))
+                .Where(neighbor => terrainMap.ContainsKey(neighbor))
                 .Select(neighbor => terrainMap[neighbor]))
             {
                 sumWeights[(int)terrainId] += RuleSet[neighborTerrainId].Where(nid => nid.NeighborTerrainId == terrainId).FirstOrDefault().Weight;
@@ -165,7 +223,7 @@ public class WfcGenerationStep : IGenerationStep
 
         /* Get prefix sum from sumWeights */
         
-        var prefixSum = new double[(int)Enum.GetValues(typeof(TerrainId)).Cast<TerrainId>().Last() + 1];
+        var prefixSum = new double[sumWeights.Length];
         for (int i = 0; i < prefixSum.Length; i++)
         {
             double previousSum = i == 0 ? 0 : prefixSum[i - 1];

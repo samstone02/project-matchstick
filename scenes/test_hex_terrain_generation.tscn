@@ -45,7 +45,7 @@ sources/1 = SubResource("TileSetAtlasSource_2abu6")
 script = ExtResource("1_4x4ul")
 MaxX = 50
 MaxY = 50
-Seed = 100
+Seed = 69420
 TileMap = NodePath("../TileMap")
 
 [node name="TileMap" type="TileMap" parent="."]
