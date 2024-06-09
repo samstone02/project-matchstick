@@ -7,4 +7,5 @@ public interface IShape
 {
     public bool IsInside(Vector2 coords);
     public List<Vector2I> ToList();
+    public HashSet<Vector2I> ToHashSet();
 }

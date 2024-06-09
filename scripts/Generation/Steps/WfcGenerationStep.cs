@@ -5,25 +5,13 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace ProjectMatchstick.Generation.Strategies;
+namespace ProjectMatchstick.Generation.Steps;
 
 /// <summary>
 /// Required the cells to fill are not empty or else an exception will be thrown.
 /// </summary>
 public class WfcGenerationStep : IGenerationStep
 {
-    public struct TerrainRule
-    {
-        public TerrainId NeighborTerrainId;
-        public double Weight;
-
-        public TerrainRule(TerrainId neighborTerrainId, double percentage)
-        {
-            NeighborTerrainId = neighborTerrainId;
-            Weight = percentage;
-        }
-    }
-
     private TerrainId FallbackTerrain { get; }
     private Random Random { get; }
     private HashSet<TerrainId> BackgroundTerrains { get; }
@@ -36,8 +24,9 @@ public class WfcGenerationStep : IGenerationStep
         { TerrainId.WALL, new List<TerrainRule> { new(TerrainId.LAND, 0.5), new(TerrainId.WALL, 2.0) } } 
     };
 
-    public WfcGenerationStep(List<List<TerrainRule>> ruleSet, int seed, TerrainId fallbackTerrain, HashSet<TerrainId> backgroundTerrains)
+    public WfcGenerationStep(Dictionary<TerrainId, List<TerrainRule>> ruleSet, int seed, TerrainId fallbackTerrain, HashSet<TerrainId> backgroundTerrains)
     {
+        // RuleSet = ruleSet;
         Random = new Random(seed);
         FallbackTerrain = fallbackTerrain;
         BackgroundTerrains = backgroundTerrains;

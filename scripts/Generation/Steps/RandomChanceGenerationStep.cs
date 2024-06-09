@@ -1,11 +1,10 @@
 ﻿using Godot;
 using ProjectMatchstick.Generation.Shapes;
-using ProjectMatchstick.Generation.Steps;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace ProjectMatchstick.Generation.Strategies;
+namespace ProjectMatchstick.Generation.Steps;
 
 public class ChanceMapGenerator : IGenerationStep
 {

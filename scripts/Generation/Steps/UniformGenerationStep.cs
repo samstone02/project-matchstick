@@ -1,9 +1,8 @@
 ﻿using Godot;
 using ProjectMatchstick.Generation.Shapes;
-using ProjectMatchstick.Generation.Steps;
 using System.Collections.Generic;
 
-namespace ProjectMatchstick.Generation.Strategies;
+namespace ProjectMatchstick.Generation.Steps;
 
 /// <summary>
 /// Mostly for preprocessing the TileMap. Prevents exceptions on `TileData.Terrain` by setting empty cells to a default terrain.

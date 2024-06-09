@@ -1,10 +1,10 @@
-﻿namespace ProjectMatchstick.Generation;
-
-using Godot;
-using ProjectMatchstick.Generation.Strategies;
+﻿using Godot;
+using ProjectMatchstick.Generation.Steps;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading.Tasks;
+
+namespace ProjectMatchstick.Generation;
 
 public partial class GeneratorNode : Node
 {

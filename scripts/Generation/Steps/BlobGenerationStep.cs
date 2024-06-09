@@ -1,7 +1,4 @@
-﻿using Godot;
-using ProjectMatchstick.Generation.Steps;
-
-namespace ProjectMatchstick.Generation.Strategies;
+﻿namespace ProjectMatchstick.Generation.Steps;
 
 public class BlobGenerationStep
 { 
