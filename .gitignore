@@ -13,3 +13,6 @@
 *.png~
 *.png.kra
 *.png.kra~
+
+# Exporting
+bin/
