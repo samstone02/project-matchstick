@@ -15,63 +15,60 @@ public class WfcGenerationStep : IGenerationStep
     private TerrainId FallbackTerrain { get; }
     private Random Random { get; }
     private HashSet<TerrainId> BackgroundTerrains { get; }
-
-    private Dictionary<TerrainId, List<TerrainRule>> RuleSet = new()
-    {
-        { TerrainId.VOID, new List<TerrainRule> { new(TerrainId.WATER, 0.3), new(TerrainId.LAND, 0.3), new(TerrainId.WALL, 0.3) } },
-        { TerrainId.WATER, new List<TerrainRule> { new(TerrainId.WATER, 2.0), new(TerrainId.LAND, 0.25) } },
-        { TerrainId.LAND, new List<TerrainRule> { new(TerrainId.WATER, 0.5), new(TerrainId.LAND, 6.0), new(TerrainId.WALL, 1.0) } },
-        { TerrainId.WALL, new List<TerrainRule> { new(TerrainId.LAND, 0.5), new(TerrainId.WALL, 2.0) } } 
-    };
+    private Dictionary<TerrainId, List<TerrainRule>> RuleSet { get; }
 
     public WfcGenerationStep(Dictionary<TerrainId, List<TerrainRule>> ruleSet, int seed, TerrainId fallbackTerrain, HashSet<TerrainId> backgroundTerrains)
     {
-        // RuleSet = ruleSet;
+        RuleSet = ruleSet;
         Random = new Random(seed);
         FallbackTerrain = fallbackTerrain;
         BackgroundTerrains = backgroundTerrains;
     }
 
-    public void Generate(TileMap tileMap, IShape shape, GenerationRenderMode mode)
-    {
-        Generate(tileMap, shape.ToList(), mode);
-    }
-
-    public void Generate(TileMap tileMap, List<Vector2I> targetCellsList, GenerationRenderMode mode)
+    public List<Vector2I> Generate(TileMap tileMap, List<Vector2I> targetCellsList, GenerationRenderMode mode)
     {
         /*
          * terrainMap: the current state of the level
          * frontier: the list of cells which WFC will analyze for chaos, then pick the least chaotic cell
-         * targetCells: the set of cells which are available to fill but haven't yet
+         * targetCells: the set of cells which are available to fill
          */
 
-        var terrainMap = targetCellsList
+        var terrainMap = tileMap.GetUsedCells(0)
+            .Where(vec => tileMap.GetCellSourceId(0, vec) != -1)
             .ToDictionary(
                 vec => vec,
-                vec => (tileMap.GetCellSourceId(0, vec) == -1) ? TerrainId.NOTHING : (TerrainId)tileMap.GetCellTileData(0, vec).Terrain);
+                vec => (TerrainId)tileMap.GetCellTileData(0, vec).Terrain);
         var targetCellsSet = new HashSet<Vector2I>(targetCellsList);
         var frontier = InitializeFrontier(tileMap, terrainMap, targetCellsList, targetCellsSet);
+        var skippedCells = new List<Vector2I>();
 
         while (frontier.Count > 0)
         {
             (Vector2I cell, List<TerrainId> allowedTerrains, LinkedListNode<Vector2I> node) = GetLeastChaoticCell(tileMap, terrainMap, frontier);
-            TerrainId selectedTerrarin = SelectRandomTerrain(tileMap, terrainMap, cell, allowedTerrains);
+            TerrainId selectedTerrain = SelectRandomTerrain(tileMap, terrainMap, cell, allowedTerrains);
 
-            if (mode == GenerationRenderMode.IMMEDIATE)
-            {
-                tileMap.SetCellsTerrainConnect(0, new Godot.Collections.Array<Vector2I> { cell }, 0, (int)selectedTerrarin);
-            }
-
-            terrainMap[cell] = selectedTerrarin;
             ExpandFrontier(ref frontier, tileMap, cell, terrainMap, targetCellsSet);
+            terrainMap[cell] = selectedTerrain;
 
             frontier.Remove(node);
             targetCellsSet.Remove(cell);
+
+            if (selectedTerrain == TerrainId.VOID || BackgroundTerrains.Contains(selectedTerrain))
+            {
+                skippedCells.Add(cell);
+                continue;
+            }
+
+            if (mode == GenerationRenderMode.IMMEDIATE)
+            {
+                tileMap.SetCellsTerrainConnect(0, new Godot.Collections.Array<Vector2I> { cell }, 0, (int)selectedTerrain);
+            }
         }
 
         if (mode == GenerationRenderMode.ON_STEP_COMPLETE)
         {
-            var terrainsToSet = terrainMap.GroupBy(keySelector => keySelector.Value);
+            var terrainsToSet = terrainMap
+                .GroupBy(keySelector => keySelector.Value);
 
             foreach (var grouping in terrainsToSet)
             {
@@ -79,15 +76,18 @@ public class WfcGenerationStep : IGenerationStep
                 tileMap.SetCellsTerrainConnect(0, new Godot.Collections.Array<Vector2I>(terrain), 0, (int)grouping.Key);
             }
         }
+
+        return skippedCells;
     }
 
     private LinkedList<Vector2I> InitializeFrontier(TileMap tileMap, Dictionary<Vector2I, TerrainId> terrainMap, List<Vector2I> targetCellsList, HashSet<Vector2I> targetCellsSet)
     {
         var frontier = new LinkedList<Vector2I>();
 
-        foreach (Vector2I cell in targetCellsList)
+        foreach (Vector2I cell in tileMap.GetUsedCells(0))
         {
             var isFilled = terrainMap.TryGetValue(cell, out TerrainId thisTerrain);
+
             if (!isFilled || BackgroundTerrains.Contains(thisTerrain))
             {
                 continue;
@@ -95,8 +95,14 @@ public class WfcGenerationStep : IGenerationStep
 
             foreach (var neighbor in tileMap.GetSurroundingCells(cell))
             {
-                terrainMap.TryGetValue(neighbor, out var neighborTerrain);
-                if (targetCellsSet.Contains(neighbor) && BackgroundTerrains.TryGetValue(neighborTerrain, out var _))
+                if (frontier.Contains(neighbor))
+                {
+                    continue;
+                }
+
+                var isNeighborFilled = terrainMap.TryGetValue(neighbor, out var neighborTerrain);
+
+                if (targetCellsSet.Contains(neighbor) && (!isNeighborFilled || BackgroundTerrains.Contains(neighborTerrain)))
                 {
                     frontier.AddFirst(neighbor);
                 }
@@ -125,11 +131,17 @@ public class WfcGenerationStep : IGenerationStep
 
     private (Vector2I, List<TerrainId>, LinkedListNode<Vector2I>) GetLeastChaoticCell(TileMap tileMap, Dictionary<Vector2I, TerrainId> terrainMap, LinkedList<Vector2I> frontier)
     {
-        var leastChaoticCell = Vector2I.Zero;
-        var leastChaoticCellNode = new LinkedListNode<Vector2I>(new(0, 0));
+        /*
+         * Return the Node (in addition to the value) in order to have constant-time removal from the frontier later on.
+         * It's a small optimization.
+         */
+
         List<TerrainId> allowedTerrains = null;
 
         var node = frontier.First;
+
+        var leastChaoticCell = node.Value;
+        var leastChaoticCellNode = node;
 
         while (node != null)
         {
@@ -140,10 +152,8 @@ public class WfcGenerationStep : IGenerationStep
             if (candidateAllowedTerrains != null && candidateAllowedTerrains.Count == 0)
             {
                 GD.Print($"Cell {cell} not allowed to have any neighbors.");
-                continue;
             }
-
-            if (allowedTerrains == null || candidateAllowedTerrains.Count < allowedTerrains.Count)
+            else if (allowedTerrains == null || candidateAllowedTerrains.Count < allowedTerrains.Count)
             {
                 leastChaoticCell = cell;
                 leastChaoticCellNode = node;
@@ -158,7 +168,7 @@ public class WfcGenerationStep : IGenerationStep
 
     private List<TerrainId> GetAllowedTerrrains(TileMap tileMap, Dictionary<Vector2I, TerrainId> terrainMap, Vector2I cell)
     {
-        IEnumerable<Vector2I> neighbors = tileMap.GetSurroundingCells(cell).Where(neighbor => terrainMap.TryGetValue(neighbor, out var _));
+        IEnumerable<Vector2I> neighbors = tileMap.GetSurroundingCells(cell).Where(neighbor => terrainMap.ContainsKey(neighbor));
         var countsTerrainsAllowedByNeighbors = new Dictionary<TerrainId, int>(); // value = numberOfNeighborsWhichAllowThisTerrain
         int numNeighbors = 0;
 
