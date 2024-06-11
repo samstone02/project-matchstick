@@ -8,16 +8,17 @@ using System.Linq;
 namespace ProjectMatchstick.Generation.Steps;
 
 /// <summary>
-/// Required the cells to fill are not empty or else an exception will be thrown.
+/// First implementation of WFC. Uses simple-tile selection, only considering immediate tile adjacencies.
+/// Experimenting with rulesets is the key to interesting generation.
 /// </summary>
-public class WfcGenerationStep : IGenerationStep
+public class SimpleTiledWfcGenerationStep : IGenerationStep
 {
     private TerrainId FallbackTerrain { get; }
     private Random Random { get; }
     private HashSet<TerrainId> BackgroundTerrains { get; }
     private Dictionary<TerrainId, List<TerrainRule>> RuleSet { get; }
 
-    public WfcGenerationStep(Dictionary<TerrainId, List<TerrainRule>> ruleSet, int seed, TerrainId fallbackTerrain, HashSet<TerrainId> backgroundTerrains)
+    public SimpleTiledWfcGenerationStep(Dictionary<TerrainId, List<TerrainRule>> ruleSet, int seed, TerrainId fallbackTerrain, HashSet<TerrainId> backgroundTerrains)
     {
         RuleSet = ruleSet;
         Random = new Random(seed);
