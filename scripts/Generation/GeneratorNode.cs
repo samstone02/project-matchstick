@@ -50,7 +50,7 @@ public partial class GeneratorNode : Node
 
             TileMap.SetCellsTerrainConnect(0, new Godot.Collections.Array<Vector2I> { new(50, 50) }, 0, (int)TerrainId.WALL);
 
-            var gen2 = new WfcGenerationStep(
+            var gen2 = new SimpleTiledWfcGenerationStep(
                 new Dictionary<TerrainId, List<TerrainRule>>
                 {
                     { TerrainId.VOID, new List<TerrainRule> { new(TerrainId.VOID, 20), new(TerrainId.WATER, 0.3), new(TerrainId.LAND, 0.3), new(TerrainId.WALL, 0.3) } },
@@ -60,7 +60,7 @@ public partial class GeneratorNode : Node
                 }, Seed, TerrainId.VOID, new HashSet<TerrainId>{ TerrainId.VOID });
             tiles = gen2.Generate(TileMap, tiles, GenerationRenderMode.IMMEDIATE);
 
-            var gen3 = new WfcGenerationStep(
+            var gen3 = new SimpleTiledWfcGenerationStep(
                 new Dictionary<TerrainId, List<TerrainRule>>
                 {
                     { TerrainId.VOID, new List<TerrainRule> { new(TerrainId.WATER, 1) } },
