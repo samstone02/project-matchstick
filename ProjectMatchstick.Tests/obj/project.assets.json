@@ -5608,9 +5608,9 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\MyCodingProjects\\Games\\ProjectMatchstick\\ProjectMatchstick.Tests\\ProjectMatchstick.Tests.csproj",
-      "projectName": "ProjectMatchstick.Tests",
-      "projectPath": "C:\\MyCodingProjects\\Games\\ProjectMatchstick\\ProjectMatchstick.Tests\\ProjectMatchstick.Tests.csproj",
+      "projectUniqueName": "C:\\MyCodingProjects\\Games\\ProjectMatchstick\\ProjectMatchstick.Tests\\ProjectMatchstick.UnitTests.csproj",
+      "projectName": "ProjectMatchstick.UnitTests",
+      "projectPath": "C:\\MyCodingProjects\\Games\\ProjectMatchstick\\ProjectMatchstick.Tests\\ProjectMatchstick.UnitTests.csproj",
       "packagesPath": "C:\\Users\\samue\\.nuget\\packages\\",
       "outputPath": "C:\\MyCodingProjects\\Games\\ProjectMatchstick\\ProjectMatchstick.Tests\\obj\\",
       "projectStyle": "PackageReference",

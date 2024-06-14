@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "viRmdgVqOF2BMFfDEIEj5NmOdNYDM6QBHqDfvhF71GTMUNEKNIgcjYGhh4pbBmhunavml0hJ097d2gv3pbSVAA==",
+  "dgSpecHash": "GxKEEg1qkB69Nvt80N/G6z/aHMEHW+2Yydo2qLR9/LJBXCVkfp4HTNwkxc4zx0iTUvRDwiEqfdFj8wpQUPyfcg==",
   "success": true,
-  "projectFilePath": "C:\\MyCodingProjects\\Games\\ProjectMatchstick\\ProjectMatchstick.Tests\\ProjectMatchstick.Tests.csproj",
+  "projectFilePath": "C:\\MyCodingProjects\\Games\\ProjectMatchstick\\ProjectMatchstick.Tests\\ProjectMatchstick.UnitTests.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\samue\\.nuget\\packages\\coverlet.collector\\6.0.0\\coverlet.collector.6.0.0.nupkg.sha512",
     "C:\\Users\\samue\\.nuget\\packages\\godot.sourcegenerators\\4.2.2\\godot.sourcegenerators.4.2.2.nupkg.sha512",
