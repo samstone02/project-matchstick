@@ -1,4 +1,6 @@
-﻿namespace ProjectMatchstick.Services.Helpers;
+﻿using System;
+
+namespace ProjectMatchstick.Services.Helpers;
 
 public static class MatrixHelper
 {

@@ -1,7 +1,7 @@
 ﻿using ProjectMatchstick.Services.Constants;
 using ProjectMatchstick.Services.Helpers;
 
-namespace ProjectMatchstick.Tests.Helpers;
+namespace ProjectMatchstick.UnitTests.Helpers;
 
 public class MatrixHelperTests
 {
