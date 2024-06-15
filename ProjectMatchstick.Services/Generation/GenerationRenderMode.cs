@@ -7,5 +7,6 @@
 public enum GenerationRenderMode
 {
     IMMEDIATE,
-    ON_STEP_COMPLETE
+    ON_STEP_COMPLETE,
+    ON_GENERARATION_COMPLETE
 }
