@@ -5,7 +5,7 @@ VisualStudioVersion = 17.9.34728.123
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ProjectMatchstick.Services", "ProjectMatchstick.Services\ProjectMatchstick.Services.csproj", "{A3303A85-569C-4C18-AC08-E08762171EA3}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ProjectMatchstick.UnitTests", "ProjectMatchstick.Tests\ProjectMatchstick.UnitTests.csproj", "{E1D4771A-B290-4386-943C-9216D07714D6}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ProjectMatchstick.UnitTests", "ProjectMatchstick.UnitTests\ProjectMatchstick.UnitTests.csproj", "{E1D4771A-B290-4386-943C-9216D07714D6}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ProjectMatchstick.Game", "ProjectMatchstick.Game\ProjectMatchstick.Game.csproj", "{4A626A3F-76C1-4D20-983D-FD7903219210}"
 EndProject

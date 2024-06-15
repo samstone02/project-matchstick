@@ -58,7 +58,7 @@ public partial class GeneratorNode : Node
                     { TerrainId.VOID, new List<TerrainRule> { new(TerrainId.VOID, 20), new(TerrainId.WATER, 0.3), new(TerrainId.LAND, 0.3), new(TerrainId.WALL, 0.3) } },
                     { TerrainId.WATER, new List<TerrainRule> { new(TerrainId.VOID, 10), new(TerrainId.WATER, 2.0), new(TerrainId.LAND, 0.25) } },
                     { TerrainId.LAND, new List<TerrainRule> { new(TerrainId.VOID, 7.0), new(TerrainId.WATER, 2.0), new(TerrainId.LAND, 6.0), new(TerrainId.WALL, 1.0) } },
-                    { TerrainId.WALL, new List<TerrainRule> { new(TerrainId.LAND, 0.5), new(TerrainId.WALL, 2.0) } }
+                    { TerrainId.WALL, new List<TerrainRule> { new(TerrainId.LAND, 0.5), new(TerrainId.WALL, 10.0) } }
                 }, Seed, TerrainId.VOID, new HashSet<TerrainId>{ TerrainId.VOID });
             tiles = gen2.Generate(TileMap, tiles, GenerationRenderMode.IMMEDIATE);
 
