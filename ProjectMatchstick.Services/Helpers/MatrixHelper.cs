@@ -41,7 +41,7 @@ public static class MatrixHelper
                 int rowA = layer;
                 int colA = layer;
 
-                int rowB = 0;
+                int rowB = layer;
                 int colB = n - layer - 1;
 
                 int rowC = n - layer - 1;

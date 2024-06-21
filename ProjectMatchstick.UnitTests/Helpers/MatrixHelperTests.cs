@@ -400,4 +400,29 @@ public class MatrixHelperTests
         Assert.Same(input, result);
         Assert.Equal(expected, result);
     }
+
+    [Fact]
+    public static void CallRotateClochwise_Given4x4nputAndFullRotation_ShouldReturnCorrectRotatedMatrix()
+    {
+        var input = new int[,]
+        {
+           {1, 2, 3, 4, },
+           {1, 2, 3, 4, },
+           {1, 2, 3, 4, },
+           {1, 2, 3, 4, },
+        };
+
+        var expected = new int[,]
+        {
+           {4, 4, 4, 4, },
+           {3, 3, 3, 3, },
+           {2, 2, 2, 2, },
+           {1, 1, 1, 1, },
+        };
+
+        var result = MatrixHelper.RotateClockwise(input, Turns.THREE_QUARTERS);
+
+        Assert.Same(input, result);
+        Assert.Equal(expected, result);
+    }
 }
