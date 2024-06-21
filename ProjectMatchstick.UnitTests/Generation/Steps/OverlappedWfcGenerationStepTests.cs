@@ -140,7 +140,7 @@ public class OverlappedWfcGenerationStepTests
 
         var uniquePatterns = wfc.ExtractUniquePatterns();
 
-        Assert.Equal(7, uniquePatterns.Count);
+        Assert.Equal(10, uniquePatterns.Count);
         AssertUniqueItems(uniquePatterns);
     }
 }
