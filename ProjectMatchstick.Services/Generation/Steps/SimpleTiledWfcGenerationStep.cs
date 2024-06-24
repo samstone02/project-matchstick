@@ -1,4 +1,5 @@
 using Godot;
+using ProjectMatchstick.Services.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -219,31 +220,9 @@ public class SimpleTiledWfcGenerationStep : IGenerationStep
             }
         }
 
-        /* Get prefix sum from sumWeights */
-        
-        var prefixSum = new double[sumWeights.Length];
-        for (int i = 0; i < prefixSum.Length; i++)
-        {
-            double previousSum = i == 0 ? 0 : prefixSum[i - 1];
-            prefixSum[i] = sumWeights[i] + previousSum;
-        }
-
-        if (prefixSum[prefixSum.Length - 1] == 0)
-        {
-            return allowedTerrains[Random.Next(allowedTerrains.Count)];
-        }
-
-        /* Select random value from 0 to totalSum. Return the TerrainId which corresponds to this random value in the prefixSum  */
-
-        double r = Random.NextDouble() * prefixSum[prefixSum.Length - 1];
-        for (int i = 0; i < prefixSum.Length; i++)
-        {
-            if (prefixSum[i] > r)
-            {
-                return allowedTerrains.Where(t => t == (TerrainId)i).FirstOrDefault();
-            }
-        }
-
-        throw new Exception($"Something went wrong generating a random number. allowedNeighbors={allowedTerrains}, prefixSum={prefixSum}, r={r}");
+        return (TerrainId) RandomHelper.SelectRandomWeighted(
+            new List<TerrainId>(Enum.GetValues<TerrainId>()),
+            terrain => sumWeights[(int)terrain],
+            Random);
     }
 }
