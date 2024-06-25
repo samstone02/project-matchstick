@@ -14,6 +14,8 @@ public struct OverlappedWfcGenerationStep : IGenerationStep
         public int Frequency { get; set; }
         public int HashValue { get; set; }
 
+        public int Size { get => Modules.GetLength(0); }
+
         public override int GetHashCode()
         {
             return HashValue;
@@ -47,7 +49,7 @@ public struct OverlappedWfcGenerationStep : IGenerationStep
 
     public class Cell
     {
-        public string Terrain { get; set; }
+        public int Terrain { get; set; }
         public int Chaos { get; set; }
         public bool IsCollapsed { get; set; }
     }
@@ -126,29 +128,52 @@ public struct OverlappedWfcGenerationStep : IGenerationStep
         return patterns;
     }
 
-    //public Pattern SelectPattern(Dictionary<Vector2I, Cell> map, PriorityQueue<Vector2I, int> frontier, List<Pattern> uniquePatterns, Vector2I leastChaoticCell)
-    //{
-    //    var validPatterns = new List<(Pattern, Vector2I)>();
+    public (Pattern, Vector2I) SelectPattern(Dictionary<Vector2I, Cell> map, HashSet<Vector2I> targetCellsSet, PriorityQueue<Vector2I, int> frontier, List<Pattern> uniquePatterns, Vector2I leastChaoticCell)
+    {
+        var validPatterns = new List<(Pattern, Vector2I)>();
 
-    //    foreach (var pat in uniquePatterns)
-    //    {
-    //        for (int x = 0; x < 10; x++)
-    //        {
-    //            for (int y = 0; y < 10; y++)
-    //            {
-    //                if (CanApply(map, pat, x, y))
-    //                {
-    //                    validPatterns.Add((pat, new Vector2I(x, y)));
-    //                }
-    //            }
-    //        }
-    //    }
+        foreach (var pat in uniquePatterns)
+        {
+            for (int x = 0; x < 10; x++)
+            {
+                for (int y = 0; y < 10; y++)
+                {
+                    if (CanApply(map, targetCellsSet, pat, x, y))
+                    {
+                        validPatterns.Add((pat, new Vector2I(x, y)));
+                    }
+                }
+            }
+        }
 
+        var idx = RandomHelper.SelectRandomWeighted(validPatterns, pat => pat.Item1.Frequency, new Random());
 
-    //}
+        return validPatterns[idx];
+    }
 
-    //public bool CanApply(Dictionary<Vector2I, Cell> map, Pattern pattern, int x, int y)
-    //{
+    public bool CanApply(Dictionary<Vector2I, Cell> map, HashSet<Vector2I> targetCellsSet, Pattern pattern, int x, int y)
+    {
+        for (int i = x; i < x + pattern.Size; i++)
+        {
+            for (int j = y; j < y + pattern.Size; j++)
+            {
+                var vec = new Vector2I(i, j);
 
-    //}
+                if (!targetCellsSet.Contains(vec))
+                {
+                    // Pattern is partly "out of bounds"
+                    return false;
+                }
+
+                var isCellOccupied = map.TryGetValue(vec, out var cell);
+
+                if (isCellOccupied && cell.Terrain != pattern.Modules[i, j])
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
 }
