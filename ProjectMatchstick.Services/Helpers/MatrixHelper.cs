@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Godot;
+using System;
+using System.Collections.Generic;
 
 namespace ProjectMatchstick.Services.Helpers;
 
@@ -74,5 +76,23 @@ public static class MatrixHelper
         }
 
         return matrix;
+    }
+
+    public static Dictionary<Vector2I, T> ToVectorDictionary<T>(T[,] matrix, Predicate<T> pred)
+    {
+        var dict = new Dictionary<Vector2I, T>();
+
+        for (int i = 0; i < matrix.GetLength(0); i++)
+        {
+            for (int j = 0; j < matrix.GetLength(1); j++)
+            {
+                if (pred(matrix[i, j]))
+                {
+                    dict[new(i, j)] = matrix[i, j];
+                }
+            }
+        }
+
+        return dict;
     }
 }

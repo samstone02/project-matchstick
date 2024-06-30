@@ -50,7 +50,17 @@ public partial class GeneratorNode : Node
             //var gen0 = new UniformGenerationStep();
             //gen0.Generate(TileMap, tiles, GenerationRenderMode.IMMEDIATE);
 
-            TileMap.SetCellsTerrainConnect(0, new Godot.Collections.Array<Vector2I> { new(0, 0) }, 0, (int)TerrainId.WALL);
+            TileMap.SetCellsTerrainConnect(0, new Godot.Collections.Array<Vector2I>
+            {
+                new(1, 0),
+                //new(0, 1),
+                //new(1, 1),
+                //new(-1, 0),
+                //new(0, -1),
+                //new(-1, -1),
+            },0, 1);
+
+            //var x = TileMap.GetSurroundingCells(new(0, 0));
 
             var gen2 = new SimpleTiledWfcGenerationStep(
                 new Dictionary<TerrainId, List<TerrainRule>>
@@ -59,7 +69,7 @@ public partial class GeneratorNode : Node
                     { TerrainId.WATER, new List<TerrainRule> { new(TerrainId.VOID, 10), new(TerrainId.WATER, 2.0), new(TerrainId.LAND, 0.25) } },
                     { TerrainId.LAND, new List<TerrainRule> { new(TerrainId.VOID, 7.0), new(TerrainId.WATER, 2.0), new(TerrainId.LAND, 6.0), new(TerrainId.WALL, 1.0) } },
                     { TerrainId.WALL, new List<TerrainRule> { new(TerrainId.LAND, 0.5), new(TerrainId.WALL, 3.0) } }
-                }, Seed, TerrainId.VOID, new HashSet<TerrainId>{ TerrainId.VOID });
+                }, Seed, TerrainId.VOID, new HashSet<TerrainId> { TerrainId.VOID });
             tiles = gen2.Generate(TileMap, tiles, GenerationRenderMode.IMMEDIATE);
 
             var gen3 = new SimpleTiledWfcGenerationStep(
@@ -72,18 +82,25 @@ public partial class GeneratorNode : Node
                 }, Seed, TerrainId.VOID, new HashSet<TerrainId> { TerrainId.VOID });
             gen3.Generate(TileMap, tiles, GenerationRenderMode.IMMEDIATE);
 
+            //var gen3 = new OverlappedWfcGenerationStep
+            //{
+            //    PatternSize = 2,
+            //    Sample = new int[,]
+            //    {
+            //        { 0, 0, 0, 1, 0, },
+            //        { 0, 0, 1, 0, 0, },
+            //        { 0, 1, 1, 0, 0, },
+            //        { 1, 0, 0, 1, 0, },
+            //        { 0, 0, 0, 0, 1, },
+            //    }
+            //};
+
+            //gen3.Generate(TileMap, tiles, 0);
+
             sw.Stop();
             GD.Print("Finished Generating");
 
             GD.Print("Total Time for IMMEDIATE: " + sw.Elapsed.TotalSeconds);
-
-            for (int i = MinX; i <= MaxX; i++)
-            {
-                for (int j = MinY; j <= MaxY; j++)
-                {
-                    var sid = TileMap.GetCellTileData(0, new(i, j)).Terrain;
-                }
-            }
 
             GD.Print("FINISHED!");
         });

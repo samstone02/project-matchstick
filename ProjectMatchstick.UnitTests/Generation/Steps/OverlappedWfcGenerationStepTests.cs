@@ -168,14 +168,16 @@ public class OverlappedWfcGenerationStepTests
 
         var pattern = new Pattern
         {
-            Modules = new int[,]
+            Cells = new Dictionary<Vector2I, int>
             {
-                { 1, 1 },
-                { 1, 1 },
+                { new(0, 0), 1 },
+                { new(0, 1), 1 },
+                { new(1, 0), 1 },
+                { new(1, 1), 1 },
             }
         };
 
-        var canApply = wfc.CanApply(map, targetCellsSet, pattern, 0, 0);
+        var canApply = wfc.CanApply(map, targetCellsSet, pattern, new(0,0));
 
         Assert.True(canApply);
     }
@@ -200,14 +202,16 @@ public class OverlappedWfcGenerationStepTests
 
         var pattern = new Pattern
         {
-            Modules = new int[,]
+            Cells = new Dictionary<Vector2I, int>
             {
-                { 1, 2 },
-                { 2, 2 },
+                { new(0, 0), 1 },
+                { new(0, 1), 2 },
+                { new(1, 0), 2 },
+                { new(1, 1), 2 },
             }
         };
 
-        var canApply = wfc.CanApply(map, targetCellsSet, pattern, 0, 0);
+        var canApply = wfc.CanApply(map, targetCellsSet, pattern, new(0, 0));
 
         Assert.True(canApply);
     }
@@ -233,14 +237,16 @@ public class OverlappedWfcGenerationStepTests
 
         var pattern = new Pattern
         {
-            Modules = new int[,]
+            Cells = new Dictionary<Vector2I, int>
             {
-                { 1, 2 },
-                { 2, 1 },
+                { new(0, 0), 1 },
+                { new(0, 1), 2 },
+                { new(1, 0), 2 },
+                { new(1, 1), 1 },
             }
         };
 
-        var canApply = wfc.CanApply(map, targetCellsSet, pattern, 0, 0);
+        var canApply = wfc.CanApply(map, targetCellsSet, pattern, new(0, 0));
 
         Assert.True(canApply);
     }
@@ -265,14 +271,16 @@ public class OverlappedWfcGenerationStepTests
 
         var pattern = new Pattern
         {
-            Modules = new int[,]
+            Cells = new Dictionary<Vector2I, int>
             {
-                { 2, 2 },
-                { 2, 1 },
+                { new(0, 0), 2 },
+                { new(0, 1), 2 },
+                { new(1, 0), 2 },
+                { new(1, 1), 1 },
             }
         };
 
-        var canApply = wfc.CanApply(map, targetCellsSet, pattern, 0, 0);
+        var canApply = wfc.CanApply(map, targetCellsSet, pattern, new(0, 0));
 
         Assert.False(canApply);
     }
@@ -298,14 +306,16 @@ public class OverlappedWfcGenerationStepTests
 
         var pattern = new Pattern
         {
-            Modules = new int[,]
+            Cells = new Dictionary<Vector2I, int>
             {
-                { 1, 2 },
-                { 2, 3 },
+                { new(0, 0), 1 },
+                { new(0, 1), 2 },
+                { new(1, 0), 2 },
+                { new(1, 1), 3 },
             }
         };
 
-        var canApply = wfc.CanApply(map, targetCellsSet, pattern, 0, 0);
+        var canApply = wfc.CanApply(map, targetCellsSet, pattern, new(0, 0));
 
         Assert.False(canApply);
     }
@@ -326,14 +336,16 @@ public class OverlappedWfcGenerationStepTests
 
         var pattern = new Pattern
         {
-            Modules = new int[,]
+            Cells = new Dictionary<Vector2I, int>
             {
-                { 1, 1 },
-                { 1, 1 },
+                { new(0, 0), 1 },
+                { new(0, 1), 1 },
+                { new(1, 0), 1 },
+                { new(1, 1), 1 },
             }
         };
 
-        var canApply = wfc.CanApply(map, targetCellsSet, pattern, 1, 1);
+        var canApply = wfc.CanApply(map, targetCellsSet, pattern, new(1, 1));
 
         Assert.False(canApply);
     }
@@ -354,16 +366,111 @@ public class OverlappedWfcGenerationStepTests
 
         var pattern = new Pattern
         {
-            Modules = new int[,]
+            Cells = new Dictionary<Vector2I, int>
             {
-                { 1, 1 },
-                { 1, 1 },
+                { new(0, 0), 1 },
+                { new(0, 1), 1 },
+                { new(1, 0), 1 },
+                { new(1, 1), 1 },
             }
         };
 
-        var canApply = wfc.CanApply(map, targetCellsSet, pattern, 99, 99);
+        var canApply = wfc.CanApply(map, targetCellsSet, pattern, new(99, 99));
 
         Assert.False(canApply);
+    }
+
+    #endregion
+
+    [Fact]
+    public void X()
+    {
+        var wfc = new OverlappedWfcGenerationStep
+        {
+            PatternSize = 2,
+            Sample = new int[,]
+            {
+                { 0, 0, 0, 1, 0, },
+                { 0, 0, 1, 0, 0, },
+                { 0, 1, 0, 0, 0, },
+                { 1, 0, 0, 0, 0, },
+                { 0, 0, 0, 2, 2, },
+            }
+        };
+
+        var map = new Dictionary<Vector2I, Cell>();
+
+        var targetCellsSet = new HashSet<Vector2I>
+        {
+            new(0, 0),
+            new(1, 0),
+            new(2, 0),
+            new(0, 1),
+            new(1, 1),
+            new(2, 1),
+            new(0, 2),
+            new(1, 2),
+            new(2, 2),
+        };
+
+        var frontier = new PriorityQueue<Vector2I, int>();
+        frontier.Enqueue(new Vector2I(0, 0), 1);
+
+        var uniquePatterns = wfc.ExtractUniquePatterns();
+
+        var leastChaoticCell = new Vector2I(0, 0);
+
+        wfc.SelectPattern(map, targetCellsSet, frontier, uniquePatterns, leastChaoticCell);
+    }
+
+    #region GetChaos
+
+    [Fact]
+    // TODO: Can you even unit test with TileMap?
+    // TODO: Maybe TileMap.GetSurroundingCells is slow... replace with custom implementation? Only use TileMap for final result?
+    public void GetChaos_WithValidArgs_ReturnsExpectedChaos()
+    {
+        var wfc = new OverlappedWfcGenerationStep
+        {
+            PatternSize = 2,
+            Sample = new int[,]
+            {
+                { 0, 0, 0, 1, 0, },
+                { 0, 0, 1, 0, 0, },
+                { 0, 1, 0, 0, 0, },
+                { 1, 0, 0, 0, 0, },
+                { 0, 0, 0, 2, 2, },
+            }
+        };
+
+        var map = new Dictionary<Vector2I, Cell>();
+        
+        var tileSet = new TileSet();
+            tileSet.AddTerrainSet(0);
+                tileSet.AddTerrain(0, 0);
+                tileSet.AddTerrain(0, 1);
+                tileSet.AddTerrain(0, 2);
+        
+        var tileMap = new TileMap();
+            tileMap.TileSet = tileSet;
+            tileMap.SetCellsTerrainConnect(0, new Godot.Collections.Array<Vector2I> { new (0, 0) }, 0, 0);
+        
+        var targetCellsSet = new HashSet<Vector2I>
+        {
+            new(0, 0),
+            new(1, 0),
+            new(2, 0),
+            new(0, 1),
+            new(1, 1),
+            new(2, 1),
+            new(0, 2),
+            new(1, 2),
+            new(2, 2),
+        };
+
+        var uniquePatterns = wfc.ExtractUniquePatterns();
+
+        wfc.GetChaosValue(map, new TileMap(), new Vector2I(0, 0), uniquePatterns, targetCellsSet); 
     }
 
     #endregion
