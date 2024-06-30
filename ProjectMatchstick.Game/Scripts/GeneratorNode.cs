@@ -30,8 +30,8 @@ public partial class GeneratorNode : Node
     public override void _Ready()
     {
         GD.Print("Hello!");
-        Task.Run(() =>
-        {
+        //Task.Run(() =>
+        //{
             Stopwatch sw = Stopwatch.StartNew();
 
             GD.Print("Generating...");
@@ -62,47 +62,58 @@ public partial class GeneratorNode : Node
 
             //var x = TileMap.GetSurroundingCells(new(0, 0));
 
-            var gen2 = new SimpleTiledWfcGenerationStep(
-                new Dictionary<TerrainId, List<TerrainRule>>
-                {
-                    { TerrainId.VOID, new List<TerrainRule> { new(TerrainId.VOID, 20), new(TerrainId.WATER, 0.3), new(TerrainId.LAND, 0.3), new(TerrainId.WALL, 0.3) } },
-                    { TerrainId.WATER, new List<TerrainRule> { new(TerrainId.VOID, 10), new(TerrainId.WATER, 2.0), new(TerrainId.LAND, 0.25) } },
-                    { TerrainId.LAND, new List<TerrainRule> { new(TerrainId.VOID, 7.0), new(TerrainId.WATER, 2.0), new(TerrainId.LAND, 6.0), new(TerrainId.WALL, 1.0) } },
-                    { TerrainId.WALL, new List<TerrainRule> { new(TerrainId.LAND, 0.5), new(TerrainId.WALL, 3.0) } }
-                }, Seed, TerrainId.VOID, new HashSet<TerrainId> { TerrainId.VOID });
-            tiles = gen2.Generate(TileMap, tiles, GenerationRenderMode.IMMEDIATE);
-
-            var gen3 = new SimpleTiledWfcGenerationStep(
-                new Dictionary<TerrainId, List<TerrainRule>>
-                {
-                    { TerrainId.VOID, new List<TerrainRule> { new(TerrainId.WATER, 1) } },
-                    { TerrainId.WATER, new List<TerrainRule> { new(TerrainId.WATER, 2.0) } },
-                    { TerrainId.LAND, new List<TerrainRule> { new(TerrainId.WATER, 1) } },
-                    { TerrainId.WALL, new List<TerrainRule> { new(TerrainId.WATER, 1.0) } }
-                }, Seed, TerrainId.VOID, new HashSet<TerrainId> { TerrainId.VOID });
-            gen3.Generate(TileMap, tiles, GenerationRenderMode.IMMEDIATE);
-
-            //var gen3 = new OverlappedWfcGenerationStep
-            //{
-            //    PatternSize = 2,
-            //    Sample = new int[,]
+            //var gen2 = new SimpleTiledWfcGenerationStep(
+            //    new Dictionary<TerrainId, List<TerrainRule>>
             //    {
-            //        { 0, 0, 0, 1, 0, },
-            //        { 0, 0, 1, 0, 0, },
-            //        { 0, 1, 1, 0, 0, },
-            //        { 1, 0, 0, 1, 0, },
-            //        { 0, 0, 0, 0, 1, },
-            //    }
-            //};
+            //        { TerrainId.VOID, new List<TerrainRule> { new(TerrainId.VOID, 20), new(TerrainId.WATER, 0.3), new(TerrainId.LAND, 0.3), new(TerrainId.WALL, 0.3) } },
+            //        { TerrainId.WATER, new List<TerrainRule> { new(TerrainId.VOID, 10), new(TerrainId.WATER, 2.0), new(TerrainId.LAND, 0.25) } },
+            //        { TerrainId.LAND, new List<TerrainRule> { new(TerrainId.VOID, 7.0), new(TerrainId.WATER, 2.0), new(TerrainId.LAND, 6.0), new(TerrainId.WALL, 1.0) } },
+            //        { TerrainId.WALL, new List<TerrainRule> { new(TerrainId.LAND, 0.5), new(TerrainId.WALL, 3.0) } }
+            //    }, Seed, TerrainId.VOID, new HashSet<TerrainId> { TerrainId.VOID });
+            //tiles = gen2.Generate(TileMap, tiles, GenerationRenderMode.IMMEDIATE);
 
-            //gen3.Generate(TileMap, tiles, 0);
+            //var gen3 = new SimpleTiledWfcGenerationStep(
+            //    new Dictionary<TerrainId, List<TerrainRule>>
+            //    {
+            //        { TerrainId.VOID, new List<TerrainRule> { new(TerrainId.WATER, 1) } },
+            //        { TerrainId.WATER, new List<TerrainRule> { new(TerrainId.WATER, 2.0) } },
+            //        { TerrainId.LAND, new List<TerrainRule> { new(TerrainId.WATER, 1) } },
+            //        { TerrainId.WALL, new List<TerrainRule> { new(TerrainId.WATER, 1.0) } }
+            //    }, Seed, TerrainId.VOID, new HashSet<TerrainId> { TerrainId.VOID });
+            //gen3.Generate(TileMap, tiles, GenerationRenderMode.IMMEDIATE);
+
+            var gen3 = new OverlappedWfcGenerationStep
+            {
+                PatternSize = 2,
+                Sample = new int[,]
+                {
+                    { 2, 2, 2, 2, 2, 1, 1, },
+                    { 2, 3, 3, 2, 2, 1, 1, },
+                    { 2, 3, 3, 2, 2, 1, 1, },
+                    { 2, 2, 2, 3, 2, 1, 1, },
+                    { 2, 2, 2, 2, 2, 1, 1, },
+                    { 1, 1, 1, 1, 1, 2, 1, },
+                    { 1, 1, 1, 1, 1, 1, 1, },
+                }
+            };
+            gen3.Generate(TileMap, tiles, 0);
 
             sw.Stop();
             GD.Print("Finished Generating");
 
+            var emptyTiles = new List<Vector2I>();
+
+            foreach (var tile in tiles)
+            {
+                if (TileMap.GetCellTileData(0, tile) == null)
+                {
+                    emptyTiles.Add(tile);
+                }
+            }
+
             GD.Print("Total Time for IMMEDIATE: " + sw.Elapsed.TotalSeconds);
 
             GD.Print("FINISHED!");
-        });
+        //});
     }
 }

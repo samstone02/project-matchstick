@@ -177,7 +177,7 @@ public class OverlappedWfcGenerationStepTests
             }
         };
 
-        var canApply = wfc.CanApply(map, targetCellsSet, pattern, new(0,0));
+        var canApply = wfc.CanApplyPatternAt(map, pattern, new(0,0));
 
         Assert.True(canApply);
     }
@@ -211,7 +211,7 @@ public class OverlappedWfcGenerationStepTests
             }
         };
 
-        var canApply = wfc.CanApply(map, targetCellsSet, pattern, new(0, 0));
+        var canApply = wfc.CanApplyPatternAt(map, pattern, new(0, 0));
 
         Assert.True(canApply);
     }
@@ -246,7 +246,7 @@ public class OverlappedWfcGenerationStepTests
             }
         };
 
-        var canApply = wfc.CanApply(map, targetCellsSet, pattern, new(0, 0));
+        var canApply = wfc.CanApplyPatternAt(map, pattern, new(0, 0));
 
         Assert.True(canApply);
     }
@@ -280,7 +280,7 @@ public class OverlappedWfcGenerationStepTests
             }
         };
 
-        var canApply = wfc.CanApply(map, targetCellsSet, pattern, new(0, 0));
+        var canApply = wfc.CanApplyPatternAt(map, pattern, new(0, 0));
 
         Assert.False(canApply);
     }
@@ -315,7 +315,7 @@ public class OverlappedWfcGenerationStepTests
             }
         };
 
-        var canApply = wfc.CanApply(map, targetCellsSet, pattern, new(0, 0));
+        var canApply = wfc.CanApplyPatternAt(map, pattern, new(0, 0));
 
         Assert.False(canApply);
     }
@@ -345,7 +345,7 @@ public class OverlappedWfcGenerationStepTests
             }
         };
 
-        var canApply = wfc.CanApply(map, targetCellsSet, pattern, new(1, 1));
+        var canApply = wfc.CanApplyPatternAt(map, pattern, new(1, 1));
 
         Assert.False(canApply);
     }
@@ -375,7 +375,7 @@ public class OverlappedWfcGenerationStepTests
             }
         };
 
-        var canApply = wfc.CanApply(map, targetCellsSet, pattern, new(99, 99));
+        var canApply = wfc.CanApplyPatternAt(map, pattern, new(99, 99));
 
         Assert.False(canApply);
     }
@@ -420,7 +420,7 @@ public class OverlappedWfcGenerationStepTests
 
         var leastChaoticCell = new Vector2I(0, 0);
 
-        wfc.SelectPattern(map, targetCellsSet, frontier, uniquePatterns, leastChaoticCell);
+        wfc.SelectPattern(map, uniquePatterns, leastChaoticCell, null);
     }
 
     #region GetChaos
@@ -470,7 +470,7 @@ public class OverlappedWfcGenerationStepTests
 
         var uniquePatterns = wfc.ExtractUniquePatterns();
 
-        wfc.GetChaosValue(map, new TileMap(), new Vector2I(0, 0), uniquePatterns, targetCellsSet); 
+        wfc.GetChaosValue(map, new TileMap(), new Vector2I(0, 0), uniquePatterns); 
     }
 
     #endregion
