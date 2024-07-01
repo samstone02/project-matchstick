@@ -1,0 +1,21 @@
+[gd_scene load_steps=4 format=3 uid="uid://se1f0f1afxv6"]
+
+[ext_resource type="Script" path="res://Scenes/Playground/Generation/GeneratorNode.cs" id="1_2lmw3"]
+[ext_resource type="Script" path="res://Scenes/Playground/Camera2D.cs" id="3_8vo61"]
+[ext_resource type="PackedScene" uid="uid://bur3vcslpmqud" path="res://Scenes/base_hex_tile_map.tscn" id="3_njhjk"]
+
+[node name="TestHexTerrainGeneration" type="Node2D"]
+
+[node name="GeneratorNode" type="Node" parent="." node_paths=PackedStringArray("TileMap")]
+script = ExtResource("1_2lmw3")
+MinX = -25
+MinY = -25
+MaxX = 25
+MaxY = 25
+Seed = 123
+TileMap = NodePath("../BaseHexTileMap")
+
+[node name="Camera2D" type="Camera2D" parent="."]
+script = ExtResource("3_8vo61")
+
+[node name="BaseHexTileMap" parent="." instance=ExtResource("3_njhjk")]
