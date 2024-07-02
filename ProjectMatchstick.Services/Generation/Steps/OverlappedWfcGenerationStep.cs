@@ -63,7 +63,7 @@ public struct OverlappedWfcGenerationStep : IGenerationStep
     
     public int PatternSize { get; set; }
 
-    public int[,] Sample { get; set; }
+    public Dictionary<Vector2I, int> Sample { get; set; }
 
     public List<Vector2I> Generate(TileMap tileMap, List<Vector2I> targetCells, GenerationRenderMode mode)
     {
@@ -101,7 +101,7 @@ public struct OverlappedWfcGenerationStep : IGenerationStep
                     frontier.Enqueue(cell, chaos);
                 }
 
-                var previousStep2 = sequeunce.Peek();
+                var previousStep2 = sequeunce.Peek(); // TODO: Sometimes this throws an exception (empty stack), especially for Pattern Size = 3. Figure out why.
                 previousStep2.TriedPatterns ??= new List<(Pattern, Vector2I)>();
                 previousStep2.TriedPatterns.Add((previousStep.Pattern, previousStep.Position));
 
@@ -198,85 +198,89 @@ public struct OverlappedWfcGenerationStep : IGenerationStep
             _ => throw new ArgumentException($"Pattern size {PatternSize} is not yet supported.")
         };
 
-        for (var x = 0; x <= Sample.GetLength(0) - size; x++)
+        foreach (var position in Sample.Keys)
         {
-            for (var y = 0; y <= Sample.GetLength(1) - size; y++)
+            var unrotatedPattern = MapHelper.GetSubmap(Sample, position, size);
+
+            if (unrotatedPattern == null)
             {
-                var unrotatedPattern = MatrixHelper.GetSubmatrix(Sample, x, y, size);
+                continue;
+            }
 
-                /*
-                 * A (haxagonal) cell's neighbors:
-                 * 
-                 * X = The Cell
-                 * N = A Neighbor
-                 *   = Not a Neighbor
-                 * 
-                 * +-+-+-+-> Y
-                 * | |N|N|
-                 * +-+-+-+
-                 * |N|X|N|
-                 * +-+-+-+
-                 * |N|N| |
-                 * +-+-+-+
-                 * |
-                 * V X
-                 * 
-                 * In other words, for a 2x2 pattern, the cells at (x + 1, y + 1) and (x - 1, y - 1) are not neighbors.
-                 * 
-                 * For higher sizes apply this rule for the size down recursively.
-                 * 
-                 * Aside, a pattern's origin is always the cell with the most negative X and Y coordinates.
-                 * For example: If the pattern is represented as a matrix (2d array), then the origin is [0,0].
-                 * 
-                 * In this function, a matrix value of -1 is assumed to be empty.
-                 * 
-                 * Due to limitations in my knowledge, patterns only support 90 degree rotations.
-                 * This is because hexagons can't be rotated by 90 or 270 degrees and be superimposed.
-                 * TODO: add more rotations (60, 120, 180, 240, 300, 360)
-                 */
+            /*
+             * A (haxagonal) cell's neighbors:
+             * 
+             * X = The Cell
+             * N = A Neighbor
+             *   = Not a Neighbor
+             * 
+             * +-+-+-+-> Y
+             * | |N|N|
+             * +-+-+-+
+             * |N|X|N|
+             * +-+-+-+
+             * |N|N| |
+             * +-+-+-+
+             * |
+             * V X
+             * 
+             * In other words, for a 2x2 pattern, the cells at (x + 1, y + 1) and (x - 1, y - 1) are not neighbors.
+             * 
+             * For higher sizes apply this rule for the size down recursively.
+             * 
+             * Aside, a pattern's origin is always the cell with the most negative X and Y coordinates.
+             * For example: If the pattern is represented as a matrix (2d array), then the origin is [0,0].
+             * 
+             * In this function, a matrix value of -1 is assumed to be empty.
+             * 
+             * Due to limitations in my knowledge, patterns only support 90 degree rotations.
+             * This is because hexagons can't be rotated by 90 or 270 degrees and be superimposed.
+             * TODO: add more rotations (60, 120, 180, 240, 300, 360)
+             */
 
-                if (size == 3)
+            if (size == 3)
+            {
+                unrotatedPattern[new(0, 0)] = -1;
+                unrotatedPattern[new(2, 2)] = -1;
+            }
+            else if (size == 5)
+            {
+                unrotatedPattern[new(0, 0)] = -1;
+                unrotatedPattern[new(0, 1)] = -1;
+                unrotatedPattern[new(1, 0)] = -1;
+                unrotatedPattern[new(2, 2)] = -1;
+                unrotatedPattern[new(1, 2)] = -1;
+                unrotatedPattern[new(2, 1)] = -1;
+            }
+
+            var patternRotations = new List<Pattern>
+            {
+                new() { Cells = unrotatedPattern, },
+                //new() { Cells = MatrixHelper.ToVectorDictionary(MatrixHelper.RotateClockwise(MatrixHelper.Clone(unrotatedPattern), 1), val => val != -1) },
+                new() { Cells = MatrixHelper.ToVectorDictionary(
+                    MatrixHelper.RotateClockwise(
+                        MapHelper.ToMatrix(unrotatedPattern), 2), vec => vec != -1) },
+                //new() { Cells = MatrixHelper.ToVectorDictionary(MatrixHelper.RotateClockwise(MatrixHelper.Clone(unrotatedPattern), 3), val => val != -1) },
+            };
+
+            foreach (var pat in patternRotations)
+            {
+                var isFound = patternsTracker.TryGetValue(pat, out var original);
+
+                if (isFound)
                 {
-                    unrotatedPattern[0, 0] = -1;
-                    unrotatedPattern[2, 2] = -1;
+                    original.Frequency++;
                 }
-                else if (size == 5)
+                else
                 {
-                    unrotatedPattern[0, 0] = -1;
-                    unrotatedPattern[0, 1] = -1;
-                    unrotatedPattern[1, 0] = -1;
-                    unrotatedPattern[2, 2] = -1;
-                    unrotatedPattern[1, 2] = -1;
-                    unrotatedPattern[2, 1] = -1;
-                }
+                    pat.Frequency = 1;
 
-                var patternRotations = new List<Pattern>
-                {
-                    new() { Cells = MatrixHelper.ToVectorDictionary(unrotatedPattern, val => val != -1) },
-                    //new() { Cells = MatrixHelper.ToVectorDictionary(MatrixHelper.RotateClockwise(MatrixHelper.Clone(unrotatedPattern), 1), val => val != -1) },
-                    new() { Cells = MatrixHelper.ToVectorDictionary(MatrixHelper.RotateClockwise(MatrixHelper.Clone(unrotatedPattern), 2), val => val != -1) },
-                    //new() { Cells = MatrixHelper.ToVectorDictionary(MatrixHelper.RotateClockwise(MatrixHelper.Clone(unrotatedPattern), 3), val => val != -1) },
-                };
-
-                foreach (var pat in patternRotations)
-                {
-                    var isFound = patternsTracker.TryGetValue(pat, out var original);
-
-                    if (isFound)
-                    {
-                        original.Frequency++;
-                    }
-                    else
-                    {
-                        pat.Frequency = 1;
-
-                        patternsTracker[pat] = pat;
-                        patterns.Add(pat);
-                    }
+                    patternsTracker[pat] = pat;
+                    patterns.Add(pat);
                 }
             }
         }
-
+                
         return patterns;
     }
 
