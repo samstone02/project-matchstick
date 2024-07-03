@@ -78,7 +78,7 @@ public static class MatrixHelper
         return matrix;
     }
 
-    public static Dictionary<Vector2I, T> ToVectorDictionary<T>(T[,] matrix, Predicate<T> pred)
+    public static Dictionary<Vector2I, T> ToVectorDictionary<T>(T[,] matrix)
     {
         var dict = new Dictionary<Vector2I, T>();
 
@@ -86,10 +86,10 @@ public static class MatrixHelper
         {
             for (int j = 0; j < matrix.GetLength(1); j++)
             {
-                if (pred(matrix[i, j]))
-                {
+                //if (pred(matrix[i, j]))
+                //{
                     dict[new(i, j)] = matrix[i, j];
-                }
+                //}
             }
         }
 

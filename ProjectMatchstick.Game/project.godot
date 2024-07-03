@@ -18,7 +18,7 @@ config/icon="res://icon.svg"
 [dotnet]
 
 project/assembly_name="ProjectMatchstick.Game"
-project/solution_directory="..\\"
+project/solution_directory="../"
 
 [input]
 

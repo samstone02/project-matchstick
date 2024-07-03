@@ -1,4 +1,5 @@
 ﻿using Godot;
+using ProjectMatchstick.Services.Generation.PatternShapes;
 using ProjectMatchstick.Services.Helpers;
 using System;
 using System.Collections.Generic;
@@ -60,6 +61,8 @@ public struct OverlappedWfcGenerationStep : IGenerationStep
         public List<Vector2I> Cells { get; set; }
         public List<(Pattern, Vector2I)> TriedPatterns { get; set; }
     }
+
+    public IPatternShape PatternShape { get; set; }
     
     public int PatternSize { get; set; }
 
@@ -116,8 +119,6 @@ public struct OverlappedWfcGenerationStep : IGenerationStep
             {
                 foreach (var neighbor in tileMap.GetSurroundingCells(collapsedCell))
                 {
-                    var found = map.TryGetValue(neighbor, out var cell);
-
                     if (!map.TryGetValue(neighbor, out var value2) || value2.IsCollapsed || frontierTracker.Contains(neighbor))
                     {
                         continue;
@@ -190,78 +191,25 @@ public struct OverlappedWfcGenerationStep : IGenerationStep
     {
         var patterns = new List<Pattern>();
         var patternsTracker = new Dictionary<Pattern, Pattern>(); // Keys reference the values cuz HashMaps suck
-        
-        var size = PatternSize switch
-        {
-            2 => 3,
-            3 => 5,
-            _ => throw new ArgumentException($"Pattern size {PatternSize} is not yet supported.")
-        };
 
         foreach (var position in Sample.Keys)
         {
-            var unrotatedPattern = MapHelper.GetSubmap(Sample, position, size);
+            var unrotatedPattern = MapHelper.GetSubmap(Sample, PatternShape.Cells, position);
 
             if (unrotatedPattern == null)
             {
                 continue;
             }
 
-            /*
-             * A (haxagonal) cell's neighbors:
-             * 
-             * X = The Cell
-             * N = A Neighbor
-             *   = Not a Neighbor
-             * 
-             * +-+-+-+-> Y
-             * | |N|N|
-             * +-+-+-+
-             * |N|X|N|
-             * +-+-+-+
-             * |N|N| |
-             * +-+-+-+
-             * |
-             * V X
-             * 
-             * In other words, for a 2x2 pattern, the cells at (x + 1, y + 1) and (x - 1, y - 1) are not neighbors.
-             * 
-             * For higher sizes apply this rule for the size down recursively.
-             * 
-             * Aside, a pattern's origin is always the cell with the most negative X and Y coordinates.
-             * For example: If the pattern is represented as a matrix (2d array), then the origin is [0,0].
-             * 
-             * In this function, a matrix value of -1 is assumed to be empty.
-             * 
-             * Due to limitations in my knowledge, patterns only support 90 degree rotations.
-             * This is because hexagons can't be rotated by 90 or 270 degrees and be superimposed.
-             * TODO: add more rotations (60, 120, 180, 240, 300, 360)
-             */
+            var patternRotations = new List<Pattern>();
 
-            if (size == 3)
+            foreach (int angle in PatternShape.SuperimposedRotations)
             {
-                unrotatedPattern[new(0, 0)] = -1;
-                unrotatedPattern[new(2, 2)] = -1;
+                patternRotations.Add(new()
+                {
+                    Cells = PatternShape.RotatePattern(unrotatedPattern, angle)
+                });
             }
-            else if (size == 5)
-            {
-                unrotatedPattern[new(0, 0)] = -1;
-                unrotatedPattern[new(0, 1)] = -1;
-                unrotatedPattern[new(1, 0)] = -1;
-                unrotatedPattern[new(2, 2)] = -1;
-                unrotatedPattern[new(1, 2)] = -1;
-                unrotatedPattern[new(2, 1)] = -1;
-            }
-
-            var patternRotations = new List<Pattern>
-            {
-                new() { Cells = unrotatedPattern, },
-                //new() { Cells = MatrixHelper.ToVectorDictionary(MatrixHelper.RotateClockwise(MatrixHelper.Clone(unrotatedPattern), 1), val => val != -1) },
-                new() { Cells = MatrixHelper.ToVectorDictionary(
-                    MatrixHelper.RotateClockwise(
-                        MapHelper.ToMatrix(unrotatedPattern), 2), vec => vec != -1) },
-                //new() { Cells = MatrixHelper.ToVectorDictionary(MatrixHelper.RotateClockwise(MatrixHelper.Clone(unrotatedPattern), 3), val => val != -1) },
-            };
 
             foreach (var pat in patternRotations)
             {

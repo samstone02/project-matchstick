@@ -7,7 +7,7 @@ namespace ProjectMatchstick.Services.Helpers;
 
 public static class MapHelper
 {
-    public static Dictionary<Vector2I, T> GetSubmap<T>(Dictionary<Vector2I, T> map, Vector2I pos, int size)
+    public static Dictionary<Vector2I, T> GetSubmap<T>(Dictionary<Vector2I, T> map, int size, Vector2I pos)
     {
         var submap = new Dictionary<Vector2I, T>();
 
@@ -24,6 +24,25 @@ public static class MapHelper
 
                 submap[new(i, j)] = value;
             }
+        }
+
+        return submap;
+    }
+
+    public static Dictionary<Vector2I, T> GetSubmap<T>(Dictionary<Vector2I, T> map, IEnumerable<Vector2I> targets, Vector2I pos)
+    {
+        var submap = new Dictionary<Vector2I, T>();
+
+        foreach (var targetPos in targets)
+        {
+            var isFound = map.TryGetValue(pos + targetPos, out var value);
+
+            if (!isFound)
+            {
+                return null;
+            }
+
+            submap[targetPos] = value;
         }
 
         return submap;

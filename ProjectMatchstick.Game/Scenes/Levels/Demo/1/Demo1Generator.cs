@@ -1,5 +1,6 @@
 using Godot;
 using ProjectMatchstick.Services.Generation;
+using ProjectMatchstick.Services.Generation.PatternShapes;
 using ProjectMatchstick.Services.Generation.Steps;
 using System.Collections.Generic;
 using System.Linq;
@@ -48,6 +49,8 @@ public partial class Demo1Generator : Node
             {
                 Sample = sample.GetUsedCells(0).ToDictionary(vec => vec, vec => sample.GetCellTileData(0, vec).Terrain),
                 PatternSize = 2,
+                //PatternShape = new HexagonPatternShape(2),
+                PatternShape = new SqaurePatternShape(3),
             };
 
             overlappedWfc.Generate(Map, tiles, GenerationRenderMode.IMMEDIATE);
