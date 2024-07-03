@@ -3,7 +3,7 @@
 [ext_resource type="Script" path="res://Scenes/Levels/Demo/1/Demo1Generator.cs" id="1_cwwuj"]
 [ext_resource type="PackedScene" uid="uid://bdb5dp5gyyy33" path="res://Scenes/Levels/Demo/1/Demo1Sample.tscn" id="2_13eip"]
 [ext_resource type="PackedScene" uid="uid://bur3vcslpmqud" path="res://Scenes/TileMaps/demo_hex_tile_map.tscn" id="3_jobht"]
-[ext_resource type="Script" path="res://Scenes/Debug/DebugCamera.cs" id="4_yvtdr"]
+[ext_resource type="PackedScene" uid="uid://cbho1diwc4rvj" path="res://Scenes/Debug/debug_camera.tscn" id="4_5w35u"]
 
 [node name="Demo1" type="Node2D"]
 
@@ -18,5 +18,4 @@ Map = NodePath("../BaseHexTileMap")
 [node name="BaseHexTileMap" parent="." instance=ExtResource("3_jobht")]
 layer_0/tile_data = PackedInt32Array(65535, 131073, 0)
 
-[node name="Camera2D" type="Camera2D" parent="."]
-script = ExtResource("4_yvtdr")
+[node name="DebugCamera" parent="." instance=ExtResource("4_5w35u")]
