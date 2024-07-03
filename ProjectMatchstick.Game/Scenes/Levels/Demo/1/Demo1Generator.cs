@@ -50,7 +50,7 @@ public partial class Demo1Generator : Node
                 Sample = sample.GetUsedCells(0).ToDictionary(vec => vec, vec => sample.GetCellTileData(0, vec).Terrain),
                 PatternSize = 2,
                 //PatternShape = new HexagonPatternShape(2),
-                PatternShape = new SqaurePatternShape(3),
+                PatternShape = new SqaurePatternShape(4),
             };
 
             overlappedWfc.Generate(Map, tiles, GenerationRenderMode.IMMEDIATE);
