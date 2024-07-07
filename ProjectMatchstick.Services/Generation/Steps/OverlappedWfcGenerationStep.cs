@@ -81,15 +81,16 @@ public struct OverlappedWfcGenerationStep : IGenerationStep
 
     public List<Vector2I> Generate(TileMap tileMap, List<Vector2I> targetCells, GenerationRenderMode mode)
     {
-        var uniquePatterns = ExtractUniquePatterns();
-        var map = InitializeMap(tileMap, targetCells, uniquePatterns);
-        var frontier = InitializeFrontier(tileMap, map, uniquePatterns);
+        List<Pattern> uniquePatterns = ExtractUniquePatterns();
+        Dictionary<Vector2I, Cell> map = InitializeMap(tileMap, targetCells, uniquePatterns);
+        PriorityQueue<Vector2I, int> frontier = InitializeFrontier(tileMap, map, uniquePatterns);
+
         var frontierTracker = new HashSet<Vector2I>();
         var sequeunce = new Stack<SequenceStep>();
 
         while (frontier.Count > 0)
         {
-            var candidatePosition = frontier.Dequeue();
+            Vector2I candidatePosition = frontier.Dequeue();
 
             if (map.TryGetValue(candidatePosition, out var value) && value.IsCollapsed)
             {
@@ -99,11 +100,13 @@ public struct OverlappedWfcGenerationStep : IGenerationStep
                 continue;
             }
 
-            var pattern = SelectPattern(map, uniquePatterns, candidatePosition, sequeunce);
+            (Pattern pattern, Vector2I patternPosition) = SelectPattern(map, uniquePatterns, candidatePosition, sequeunce);
 
-            if (pattern.Item1 == null)
+            if (pattern == null)
             {
-                var previousStep = sequeunce.Pop();
+                /* No valid pattern found at this position. Undo the last step and try a different step. */
+
+                SequenceStep previousStep = sequeunce.Pop();
 
                 foreach (var cell in previousStep.Cells)
                 {
@@ -115,20 +118,20 @@ public struct OverlappedWfcGenerationStep : IGenerationStep
                     frontier.Enqueue(cell, chaos);
                 }
 
-                var previousStep2 = sequeunce.Peek(); // TODO: Sometimes this throws an exception (empty stack), especially for PatternSize = 3. Figure out why.
+                SequenceStep previousStep2 = sequeunce.Peek(); // TODO: Sometimes this throws an exception (empty stack), especially for PatternSize = 3. Figure out why.
                 previousStep2.TriedPatterns ??= new List<(Pattern, Vector2I)>();
                 previousStep2.TriedPatterns.Add((previousStep.Pattern, previousStep.Position));
 
                 continue;
             }
 
-            var sequenceStep = ApplyPatternAt(map, pattern.Item1, pattern.Item2);
+            SequenceStep sequenceStep = ApplyPatternAt(map, pattern, patternPosition);
             
             sequeunce.Push(sequenceStep);
 
-            foreach (var collapsedCell in sequenceStep.Cells)
+            foreach (Vector2I collapsedCell in sequenceStep.Cells)
             {
-                foreach (var neighbor in tileMap.GetSurroundingCells(collapsedCell))
+                foreach (Vector2I neighbor in tileMap.GetSurroundingCells(collapsedCell))
                 {
                     if (!map.TryGetValue(neighbor, out var value2) || value2.IsCollapsed || frontierTracker.Contains(neighbor))
                     {
@@ -156,7 +159,7 @@ public struct OverlappedWfcGenerationStep : IGenerationStep
     {
         var map = new Dictionary<Vector2I, Cell>();
 
-        foreach (var cell in targetCells)
+        foreach (Vector2I cell in targetCells)
         {
             map[cell] = new Cell
             {
@@ -165,9 +168,9 @@ public struct OverlappedWfcGenerationStep : IGenerationStep
             };
         }
 
-        var usedCells = tileMap.GetUsedCells(0);
+        Godot.Collections.Array<Vector2I> usedCells = tileMap.GetUsedCells(0);
 
-        foreach (var cell in usedCells)
+        foreach (Vector2I cell in usedCells)
         {
             map[cell] = new Cell
             {
@@ -175,7 +178,7 @@ public struct OverlappedWfcGenerationStep : IGenerationStep
             };
         }
 
-        foreach (var cell in usedCells)
+        foreach (Vector2I cell in usedCells)
         {
             map[cell].Chaos = GetChaosValue(map, tileMap, cell, uniquePatterns);
         }
@@ -190,7 +193,7 @@ public struct OverlappedWfcGenerationStep : IGenerationStep
     {
         var frontier = new PriorityQueue<Vector2I, int>();
 
-        foreach (var cell in tileMap.GetUsedCells(0))
+        foreach (Vector2I cell in tileMap.GetUsedCells(0))
         {
             foreach (var neighbor in tileMap.GetSurroundingCells(cell))
             {
@@ -213,9 +216,9 @@ public struct OverlappedWfcGenerationStep : IGenerationStep
         var patterns = new List<Pattern>();
         var patternsTracker = new Dictionary<Pattern, Pattern>(); /* Using a Dictionary instead of HashMap becayse HashMaps suck. */
 
-        foreach (var position in Sample.Keys)
+        foreach (Vector2I position in Sample.Keys)
         {
-            var unrotatedPattern = MapHelper.GetSubmap(Sample, PatternShape.Cells, position);
+            Dictionary<Vector2I, int> unrotatedPattern = MapHelper.GetSubmap(Sample, PatternShape.Cells, position);
 
             if (unrotatedPattern == null)
             {
@@ -261,12 +264,12 @@ public struct OverlappedWfcGenerationStep : IGenerationStep
     {
         var validPatternsAndPositions = new List<(Pattern, Vector2I)>();
 
-        foreach (var pattern in uniquePatterns)
+        foreach (Pattern pattern in uniquePatterns)
         {
-            foreach (var patternCellPosition in pattern.Cells.Keys)
+            foreach (Vector2I patternCellPosition in pattern.Cells.Keys)
             {
-                var patternPosition = candidatePosition - patternCellPosition;
-                var wasPatternTriedPreviously =
+                Vector2I patternPosition = candidatePosition - patternCellPosition;
+                bool wasPatternTriedPreviously =
                     sequence.TryPeek(out var value)
                     && value.TriedPatterns != null
                     && value.TriedPatterns.Contains((pattern, patternPosition));
@@ -285,7 +288,7 @@ public struct OverlappedWfcGenerationStep : IGenerationStep
             return (null, new(0,0));
         }
 
-        var idx = RandomHelper.SelectRandomWeighted(validPatternsAndPositions, pat => pat.Item1.Frequency, new Random());
+        int idx = RandomHelper.SelectRandomWeighted(validPatternsAndPositions, pat => pat.Item1.Frequency, new Random());
         
         return validPatternsAndPositions[idx];
     }
@@ -297,7 +300,7 @@ public struct OverlappedWfcGenerationStep : IGenerationStep
     {
         int overlaps = 0;
 
-        foreach (var cellPosition in pattern.Cells.Keys)
+        foreach (Vector2I cellPosition in pattern.Cells.Keys)
         {
             if (map.TryGetValue(patternPosition + cellPosition, out var value) && value.IsCollapsed)
             {
@@ -325,7 +328,7 @@ public struct OverlappedWfcGenerationStep : IGenerationStep
     {
         var appliedCells = new List<Vector2I>();
 
-        foreach (var patternCellPosition in pattern.Cells.Keys)
+        foreach (Vector2I patternCellPosition in pattern.Cells.Keys)
         {
             var mapCellPosition = patternCellPosition + patternPosition;
 
