@@ -4,11 +4,20 @@ using ProjectMatchstick.Services.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
-using static ProjectMatchstick.Services.Generation.Steps.OverlappedWfcGenerationStep;
 
 namespace ProjectMatchstick.Services.Generation.Steps;
 
+// TODO: Fix issue where algo prefers borders. This may / may not be an issue though...
+//      This is probably because there are "less possibilities" at the border due to how the algo
+//      Figures out chaos values (by looking at all the empty neighbors).
+//      Fewer neighbors means lower chaos value.
+//      Maybe empty neighbors give some high value?
+//      Maybe do the regular chaos calculation even for empty neighbors? (look in GetChaosValue)
+// TODO: Fix the empty stack / sequence issue. Sometimes throws an exception on Peek.
+//      Probably because the stack size = 1, then we Pop, then we Peek and now empty stack.
+// TODO: Fix the missing cells issue. Sometimes cells will simply be skipped. Don't know why.
+// TODO: Use the Random or a random seed.
+// TODO: On an "dead end" (when no pattern can be applied), maybe we could end the algo early? Or add an option for that?
 public struct OverlappedWfcGenerationStep : IGenerationStep
 {
     public class Pattern
@@ -68,6 +77,8 @@ public struct OverlappedWfcGenerationStep : IGenerationStep
 
     public Dictionary<Vector2I, int> Sample { get; set; }
 
+    public Random Random { get; set; }
+
     public List<Vector2I> Generate(TileMap tileMap, List<Vector2I> targetCells, GenerationRenderMode mode)
     {
         var uniquePatterns = ExtractUniquePatterns();
@@ -104,7 +115,7 @@ public struct OverlappedWfcGenerationStep : IGenerationStep
                     frontier.Enqueue(cell, chaos);
                 }
 
-                var previousStep2 = sequeunce.Peek(); // TODO: Sometimes this throws an exception (empty stack), especially for Pattern Size = 3. Figure out why.
+                var previousStep2 = sequeunce.Peek(); // TODO: Sometimes this throws an exception (empty stack), especially for PatternSize = 3. Figure out why.
                 previousStep2.TriedPatterns ??= new List<(Pattern, Vector2I)>();
                 previousStep2.TriedPatterns.Add((previousStep.Pattern, previousStep.Position));
 
@@ -135,9 +146,12 @@ public struct OverlappedWfcGenerationStep : IGenerationStep
             }
         }
 
-        return targetCells; // TODO: return something else...
+        return targetCells; // TODO: Return a list of the unfilled cells
     }
 
+    /// <summary>
+    /// Initialize a dictionary representing the state of the world.
+    /// </summary>
     public Dictionary<Vector2I, Cell> InitializeMap(TileMap tileMap, List<Vector2I> targetCells, List<Pattern> uniquePatterns)
     {
         var map = new Dictionary<Vector2I, Cell>();
@@ -169,6 +183,9 @@ public struct OverlappedWfcGenerationStep : IGenerationStep
         return map;
     }
 
+    /// <summary>
+    /// Add intial positions to the frontier. The frontier exists for optimization purposes.
+    /// </summary>
     public PriorityQueue<Vector2I, int> InitializeFrontier(TileMap tileMap, Dictionary<Vector2I, Cell> map, List<Pattern> uniquePatterns)
     {
         var frontier = new PriorityQueue<Vector2I, int>();
@@ -187,10 +204,14 @@ public struct OverlappedWfcGenerationStep : IGenerationStep
         return frontier;
     }
 
+    /// <summary>
+    /// Extract evey unique pattern from the sample. Depending on the PatternShape, it will include rotations.
+    /// If the same pattern is encountered twice, the frequency is incremented.
+    /// </summary>
     public List<Pattern> ExtractUniquePatterns()
     {
         var patterns = new List<Pattern>();
-        var patternsTracker = new Dictionary<Pattern, Pattern>(); // Keys reference the values cuz HashMaps suck
+        var patternsTracker = new Dictionary<Pattern, Pattern>(); /* Using a Dictionary instead of HashMap becayse HashMaps suck. */
 
         foreach (var position in Sample.Keys)
         {
@@ -269,6 +290,9 @@ public struct OverlappedWfcGenerationStep : IGenerationStep
         return validPatternsAndPositions[idx];
     }
 
+    /// <summary>
+    /// Can the pattern at the position be applied? If the pattern correctly overlaps the map (any overlap has the same cell type) then true.
+    /// </summary>
     public bool CanApplyPatternAt(Dictionary<Vector2I, Cell> map, Pattern pattern, Vector2I patternPosition)
     {
         int overlaps = 0;
@@ -291,6 +315,12 @@ public struct OverlappedWfcGenerationStep : IGenerationStep
         return overlaps > 0;
     }
 
+    /// <summary>
+    /// Apply the pattern at the position. Assuming it is a valid position for the pattern.
+    /// </summary>
+    /// <returns>
+    /// A SequenceStep containing the position of the pattern and the cells that were applied.
+    /// </returns>
     public SequenceStep ApplyPatternAt(Dictionary<Vector2I, Cell> map, Pattern pattern, Vector2I patternPosition)
     {
         var appliedCells = new List<Vector2I>();
@@ -322,6 +352,9 @@ public struct OverlappedWfcGenerationStep : IGenerationStep
         };
     }
 
+    /// <summary>
+    /// Gets the "chaos" of the cell. Chaos is essentially a count of how many patterns are valid given this cell and the state of the world.
+    /// </summary>
     public int GetChaosValue(Dictionary<Vector2I, Cell> map, TileMap tileMap, Vector2I cellPosition, List<Pattern> uniquePatterns)
     {
         int chaos = 0;
