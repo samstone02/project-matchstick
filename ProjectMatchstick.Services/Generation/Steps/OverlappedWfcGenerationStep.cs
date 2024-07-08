@@ -18,6 +18,9 @@ namespace ProjectMatchstick.Services.Generation.Steps;
 // TODO: Fix the missing cells issue. Sometimes cells will simply be skipped. Don't know why.
 // TODO: Use the Random or a random seed.
 // TODO: On an "dead end" (when no pattern can be applied), maybe we could end the algo early? Or add an option for that?
+// TODO: Support "rotatable" and "unrotatable" cells. Decides if the pattern can be rotated or not.
+//      Need to figure out how to get hthat custom "IsRotatble" layer into the algo... probably at ExtractUniquePatterns
+// TODO: Might make sense to rely on the Cells ID rather than the terrain since we're not using terrain as intended
 public struct OverlappedWfcGenerationStep : IGenerationStep
 {
     public class Pattern
