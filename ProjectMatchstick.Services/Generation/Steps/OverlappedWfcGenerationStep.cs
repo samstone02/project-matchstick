@@ -102,7 +102,7 @@ public class OverlappedWfcGenerationStep : IGenerationStep
                 continue;
             }
 
-            // :)
+            // :/
 
             (Pattern pattern, Vector2I patternPosition) = SelectPattern(map, uniquePatterns, candidatePosition, sequeunce);
 
