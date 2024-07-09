@@ -54,8 +54,9 @@ public partial class DemoRuins1Generator : Node
                 Sample = sample.GetUsedCells(0).ToDictionary(vec => vec, vec => sample.GetCellTileData(0, vec).Terrain),
                 PatternSize = 2,
                 //PatternShape = new HexagonPatternShape(2),
-                PatternShape = new SqaurePatternShape(4),
+                PatternShape = new SqaurePatternShape(3),
                 Random = new System.Random(Seed),
+                EmptyNeighborChaosBias = 1000,
             };
 
             overlappedWfc.Generate(Map, tiles, GenerationRenderMode.IMMEDIATE);
