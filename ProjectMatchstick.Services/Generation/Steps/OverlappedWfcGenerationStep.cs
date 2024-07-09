@@ -7,6 +7,8 @@ using System.Linq;
 
 namespace ProjectMatchstick.Services.Generation.Steps;
 
+// TODO: It looks like cells on the edge of the sample are being misread as able to be next to anything.
+//      This is not how it should work, make it so cells on the border can only be next to cells next to them in the sample.
 // TODO: Fix issue where algo prefers borders. This may / may not be an issue though...
 //      This is probably because there are "less possibilities" at the border due to how the algo
 //      Figures out chaos values (by looking at all the empty neighbors).
@@ -19,8 +21,7 @@ namespace ProjectMatchstick.Services.Generation.Steps;
 // TODO: Use the Random or a random seed.
 // TODO: On an "dead end" (when no pattern can be applied), maybe we could end the algo early? Or add an option for that?
 // TODO: Support "rotatable" and "unrotatable" cells. Decides if the pattern can be rotated or not.
-//      Need to figure out how to get hthat custom "IsRotatble" layer into the algo... probably at ExtractUniquePatterns
-// TODO: Might make sense to rely on the Cells ID rather than the terrain since we're not using terrain as intended
+//      Need to figure out how to get that custom "IsRotatable" layer into the algo... probably at ExtractUniquePatterns
 public struct OverlappedWfcGenerationStep : IGenerationStep
 {
     public class Pattern

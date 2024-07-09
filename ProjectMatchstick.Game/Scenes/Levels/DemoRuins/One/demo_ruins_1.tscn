@@ -1,0 +1,23 @@
+[gd_scene load_steps=5 format=3 uid="uid://birkt4143dbqr"]
+
+[ext_resource type="PackedScene" uid="uid://cbho1diwc4rvj" path="res://Scenes/Debug/debug_camera.tscn" id="1_71bah"]
+[ext_resource type="PackedScene" uid="uid://cl122ok4jbpi7" path="res://Scenes/TileSets/demo_ruins_hex_tile_set.tscn" id="2_t261w"]
+[ext_resource type="Script" path="res://Scenes/Levels/DemoRuins/One/DemoRuins1Generator.cs" id="3_oas5v"]
+[ext_resource type="PackedScene" uid="uid://d3omrbs8mpru2" path="res://Scenes/Levels/DemoRuins/One/demo_ruins_1_sample.tscn" id="4_bnnx5"]
+
+[node name="Demo1" type="Node2D"]
+
+[node name="DebugCamera" parent="." instance=ExtResource("1_71bah")]
+
+[node name="DemoRuinsHexTileMap" parent="." instance=ExtResource("2_t261w")]
+layer_0/tile_data = PackedInt32Array(65535, 65536, 0)
+
+[node name="Generator" type="Node" parent="." node_paths=PackedStringArray("Map")]
+script = ExtResource("3_oas5v")
+MinX = -50
+MinY = -50
+MaxX = 50
+MaxY = 50
+Seed = 123
+SampleScene = ExtResource("4_bnnx5")
+Map = NodePath("../DemoRuinsHexTileMap")

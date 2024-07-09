@@ -1,8 +1,8 @@
 [gd_scene load_steps=5 format=3 uid="uid://drny0c1te68ys"]
 
-[ext_resource type="Script" path="res://Scenes/Levels/Demo/1/Demo1Generator.cs" id="1_cwwuj"]
-[ext_resource type="PackedScene" uid="uid://bdb5dp5gyyy33" path="res://Scenes/Levels/Demo/1/Demo1Sample.tscn" id="2_13eip"]
-[ext_resource type="PackedScene" uid="uid://bur3vcslpmqud" path="res://Scenes/TileMaps/demo_hex_tile_map.tscn" id="3_jobht"]
+[ext_resource type="Script" path="res://Scenes/Levels/Demo/One/Demo1Generator.cs" id="1_cwwuj"]
+[ext_resource type="PackedScene" uid="uid://bdb5dp5gyyy33" path="res://Scenes/Levels/Demo/One/demo_1_sample.tscn" id="2_13eip"]
+[ext_resource type="PackedScene" uid="uid://bur3vcslpmqud" path="res://Scenes/TileSets/demo_hex_tile_set.tscn" id="3_jobht"]
 [ext_resource type="PackedScene" uid="uid://cbho1diwc4rvj" path="res://Scenes/Debug/debug_camera.tscn" id="4_5w35u"]
 
 [node name="Demo1" type="Node2D"]

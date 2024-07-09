@@ -6,7 +6,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 
-public partial class Demo1Generator : Node
+namespace ProjectMatchstick.Game.Scenes.Levels.DemoRuins.One;
+
+public partial class DemoRuins1Generator : Node
 {
     [Export]
     public int MinX { get; set; }
@@ -30,9 +32,11 @@ public partial class Demo1Generator : Node
     TileMap Map { get; set; }
 
     public override void _Ready()
-	{
+    {
         var thread = new Thread(() =>
         {
+            GD.Print("Finished!");
+
             var tiles = new List<Vector2I>();
 
             for (int i = MinX; i <= MaxX; i++)
@@ -43,7 +47,7 @@ public partial class Demo1Generator : Node
                 }
             }
 
-            var sample = (TileMap) SampleScene.Instantiate().FindChild("BaseHexTileMap");
+            var sample = (TileMap)SampleScene.Instantiate().FindChild("DemoRuinsHexTileMap");
 
             var overlappedWfc = new OverlappedWfcGenerationStep
             {
