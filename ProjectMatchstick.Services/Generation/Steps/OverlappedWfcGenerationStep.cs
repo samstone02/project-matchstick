@@ -292,7 +292,7 @@ public struct OverlappedWfcGenerationStep : IGenerationStep
             return (null, new(0,0));
         }
 
-        int idx = RandomHelper.SelectRandomWeighted(validPatternsAndPositions, pat => pat.Item1.Frequency, new Random());
+        int idx = RandomHelper.SelectRandomWeighted(validPatternsAndPositions, pat => pat.Item1.Frequency, Random);
         
         return validPatternsAndPositions[idx];
     }

@@ -55,6 +55,7 @@ public partial class DemoRuins1Generator : Node
                 PatternSize = 2,
                 //PatternShape = new HexagonPatternShape(2),
                 PatternShape = new SqaurePatternShape(4),
+                Random = new System.Random(Seed),
             };
 
             overlappedWfc.Generate(Map, tiles, GenerationRenderMode.IMMEDIATE);
