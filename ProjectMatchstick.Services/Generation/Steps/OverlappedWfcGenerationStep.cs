@@ -22,12 +22,12 @@ public class OverlappedWfcGenerationStep : IGenerationStep
 {
     public class Pattern
     {
-        public Dictionary<Vector2I, int> Cells { get; set; }
+        public Dictionary<Vector2I, Cell> Cells { get; set; }
         public int Frequency { get; set; }
 
         public override int GetHashCode()
         {
-            return Cells.Sum(kv => kv.Value);
+            return Cells.Sum(kv => kv.Value.Terrain);
         }
 
         public override bool Equals(object obj)
@@ -61,6 +61,7 @@ public class OverlappedWfcGenerationStep : IGenerationStep
         public int Terrain { get; set; }
         public int Chaos { get; set; }
         public bool IsCollapsed { get => Terrain != -1; }
+        public bool IsRotatable { get; set; }
     }
 
     public class SequenceStep
@@ -75,7 +76,7 @@ public class OverlappedWfcGenerationStep : IGenerationStep
     
     public int PatternSize { get; set; }
 
-    public Dictionary<Vector2I, int> Sample { get; set; }
+    public Dictionary<Vector2I, Cell> Sample { get; set; }
 
     public Random Random { get; set; } = new Random();
 
@@ -83,7 +84,7 @@ public class OverlappedWfcGenerationStep : IGenerationStep
 
     public List<Vector2I> Generate(TileMap tileMap, List<Vector2I> targetCells, GenerationRenderMode mode)
     {
-        List<Pattern> uniquePatterns = ExtractUniquePatterns();
+        List<Pattern> uniquePatterns = ExtractUniquePatterns(tileMap);
         Dictionary<Vector2I, Cell> map = InitializeMap(tileMap, targetCells, uniquePatterns);
         PriorityQueue<Vector2I, int> frontier = InitializeFrontier(tileMap, map, uniquePatterns);
 
@@ -103,7 +104,7 @@ public class OverlappedWfcGenerationStep : IGenerationStep
             }
 
             // :/
-
+            
             (Pattern pattern, Vector2I patternPosition) = SelectPattern(map, uniquePatterns, candidatePosition, sequeunce);
 
             if (pattern == null)
@@ -116,8 +117,7 @@ public class OverlappedWfcGenerationStep : IGenerationStep
                 {
                     int chaos = GetChaosValue(map, tileMap, cell, uniquePatterns);
 
-                    map[cell].Chaos = chaos;
-                    map[cell].Terrain = 0;
+                    map.Remove(cell);
 
                     frontier.Enqueue(cell, chaos);
                 }
@@ -215,28 +215,40 @@ public class OverlappedWfcGenerationStep : IGenerationStep
     /// Extract evey unique pattern from the sample. Depending on the PatternShape, it will include rotations.
     /// If the same pattern is encountered twice, the frequency is incremented.
     /// </summary>
-    public List<Pattern> ExtractUniquePatterns()
+    public List<Pattern> ExtractUniquePatterns(TileMap tileMap)
     {
         var patterns = new List<Pattern>();
         var patternsTracker = new Dictionary<Pattern, Pattern>(); /* Using a Dictionary instead of HashMap becayse HashMaps suck. */
 
         foreach (Vector2I position in Sample.Keys)
         {
-            Dictionary<Vector2I, int> unrotatedPattern = MapHelper.GetSubmap(Sample, PatternShape.Cells, position);
+            Dictionary<Vector2I, Cell> unrotatedPattern = MapHelper.GetSubmap(Sample, PatternShape.Cells, position);
+            var patternRotations = new List<Pattern>();
 
             if (unrotatedPattern == null)
             {
                 continue;
             }
 
-            var patternRotations = new List<Pattern>();
+            bool doNotRotate = unrotatedPattern.Any(kv => !kv.Value.IsRotatable);
 
-            foreach (int angle in PatternShape.SuperimposedRotations)
+            if (doNotRotate)
             {
                 patternRotations.Add(new()
                 {
-                    Cells = PatternShape.RotatePattern(unrotatedPattern, angle)
+                    Cells = PatternShape.RotatePattern(unrotatedPattern, 0)
                 });
+            }
+
+            else
+            {
+                foreach (int angle in PatternShape.SuperimposedRotations)
+                {
+                    patternRotations.Add(new()
+                    {
+                        Cells = PatternShape.RotatePattern(unrotatedPattern, angle)
+                    });
+                }
             }
 
             foreach (var pat in patternRotations)
@@ -308,7 +320,7 @@ public class OverlappedWfcGenerationStep : IGenerationStep
         {
             if (map.TryGetValue(patternPosition + cellPosition, out var value) && value.IsCollapsed)
             {
-                if (value.Terrain == pattern.Cells[cellPosition])
+                if (value.Terrain == pattern.Cells[cellPosition].Terrain)
                 {
                     overlaps++;
                 }
@@ -343,10 +355,7 @@ public class OverlappedWfcGenerationStep : IGenerationStep
 
             if (!value.IsCollapsed)
             {
-                map[mapCellPosition] = new Cell
-                {
-                    Terrain = pattern.Cells[patternCellPosition]
-                };
+                map[mapCellPosition] = pattern.Cells[patternCellPosition];
                 appliedCells.Add(mapCellPosition);
             }
         }

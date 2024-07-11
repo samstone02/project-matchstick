@@ -18,6 +18,6 @@ MinX = -50
 MinY = -50
 MaxX = 50
 MaxY = 50
-Seed = 123
+Seed = 125
 SampleScene = ExtResource("4_bnnx5")
 Map = NodePath("../DemoRuinsHexTileMap")
