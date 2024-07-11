@@ -13,8 +13,6 @@ namespace ProjectMatchstick.Services.Generation.Steps;
 //      Probably because the stack size = 1, then we Pop, then we Peek and now empty stack.
 // TODO: Fix the missing cells issue. Sometimes cells will simply be skipped. Don't know why.
 // TODO: On an "dead end" (when no pattern can be applied), maybe we could end the algo early? Or add an option for that?
-// TODO: Support "rotatable" and "unrotatable" cells. Decides if the pattern can be rotated or not.
-//      Need to figure out how to get that custom "IsRotatable" layer into the algo... probably at ExtractUniquePatterns
 // TODO: There is a scenario where tiles that don't appear next to eachother in the sample can be placed next to eachother.
 //      This happens when a Pattern is applied in a valid spot, but an immediate neighbor to one of the applied cells is not valid accoring to the sample.
 //      This is lower priority, I think. Might also be fixed by fixing the sequeunce?
