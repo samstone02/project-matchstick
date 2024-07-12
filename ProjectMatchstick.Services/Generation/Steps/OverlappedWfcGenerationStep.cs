@@ -7,12 +7,11 @@ using System.Linq;
 
 namespace ProjectMatchstick.Services.Generation.Steps;
 
-// TODO: It looks like cells on the edge of the sample are being misread as able to be next to anything.
+// TODO: It looks like cells on the edge of the sample are being misread as able to be next to anything?
 //      This is not how it should work, make it so cells on the border can only be next to cells next to them in the sample.
 // TODO: Fix the empty stack / sequence issue. Sometimes throws an exception on Peek.
 //      Probably because the stack size = 1, then we Pop, then we Peek and now empty stack.
 // TODO: Fix the missing cells issue. Sometimes cells will simply be skipped. Don't know why.
-// TODO: On an "dead end" (when no pattern can be applied), maybe we could end the algo early? Or add an option for that?
 // TODO: There is a scenario where tiles that don't appear next to eachother in the sample can be placed next to eachother.
 //      This happens when a Pattern is applied in a valid spot, but an immediate neighbor to one of the applied cells is not valid accoring to the sample.
 //      This is lower priority, I think. Might also be fixed by fixing the sequeunce?
@@ -67,6 +66,7 @@ public class OverlappedWfcGenerationStep : IGenerationStep
         public int Terrain { get; set; }
         public int Chaos { get; set; }
         public bool IsCollapsed { get => Terrain != UNSET_TERRAIN; }
+        public bool IsFrontier {  get; set; } // TODO: Use this instead of the frontier data struct
     }
 
     public class SequenceStep
@@ -89,7 +89,7 @@ public class OverlappedWfcGenerationStep : IGenerationStep
 
     public List<Vector2I> Generate(TileMap tileMap, List<Vector2I> targetCells, GenerationRenderMode mode)
     {
-        List<Pattern> uniquePatterns = ExtractUniquePatterns(tileMap);
+        List<Pattern> uniquePatterns = ExtractUniquePatterns();
         Dictionary<Vector2I, MapCell> map = InitializeMap(tileMap, targetCells, uniquePatterns);
         PriorityQueue<Vector2I, int> frontier = InitializeFrontier(tileMap, map, uniquePatterns);
 
@@ -113,12 +113,11 @@ public class OverlappedWfcGenerationStep : IGenerationStep
             if (pattern == null)
             {
                 /* No valid pattern found at this position. Undo the last step and try a different step. */
-                UnapplyLastStep(tileMap, map, frontier, sequeunce, uniquePatterns);
+                UnapplyLastStep(tileMap, map, frontier, frontierTracker, sequeunce, uniquePatterns);
                 continue;
             }
 
             SequenceStep sequenceStep = ApplyPatternAt(map, pattern, patternPosition);
-            
             sequeunce.Push(sequenceStep);
 
             foreach (Vector2I collapsedCell in sequenceStep.Cells)
@@ -203,7 +202,7 @@ public class OverlappedWfcGenerationStep : IGenerationStep
     /// Extract evey unique pattern from the sample. Depending on the PatternShape, it will include rotations.
     /// If the same pattern is encountered twice, the frequency is incremented.
     /// </summary>
-    public List<Pattern> ExtractUniquePatterns(TileMap tileMap)
+    public List<Pattern> ExtractUniquePatterns()
     {
         var patterns = new List<Pattern>();
         var patternsTracker = new Dictionary<Pattern, Pattern>(); /* Using a Dictionary instead of HashMap becayse HashMaps suck. */
@@ -218,25 +217,16 @@ public class OverlappedWfcGenerationStep : IGenerationStep
                 continue;
             }
 
-            bool doNotRotate = unrotatedPattern.Any(kv => !kv.Value.IsRotatable);
+            IEnumerable<int> angles = unrotatedPattern.Any(kv => !kv.Value.IsRotatable)
+                ? new int[] { 0 }
+                : PatternShape.SuperimposedRotations;
 
-            if (doNotRotate)
+            foreach (int angle in angles)
             {
                 patternRotations.Add(new()
                 {
-                    Cells = PatternShape.RotatePattern(unrotatedPattern, 0)
+                    Cells = PatternShape.RotatePattern(unrotatedPattern, angle)
                 });
-            }
-
-            else
-            {
-                foreach (int angle in PatternShape.SuperimposedRotations)
-                {
-                    patternRotations.Add(new()
-                    {
-                        Cells = PatternShape.RotatePattern(unrotatedPattern, angle)
-                    });
-                }
             }
 
             foreach (var pat in patternRotations)
@@ -285,12 +275,12 @@ public class OverlappedWfcGenerationStep : IGenerationStep
             }
         }
 
-        /* Select a random pattern + position weighted by the pattern's frequency */
-
         if (validPatternsAndPositions.Count == 0)
         {
             return (null, new(0,0));
         }
+
+        /* Select a random pattern + position weighted by the pattern's frequency */
 
         int idx = RandomHelper.SelectRandomWeighted(validPatternsAndPositions, pat => pat.Item1.Frequency, Random);
         
@@ -343,15 +333,12 @@ public class OverlappedWfcGenerationStep : IGenerationStep
 
             if (!value.IsCollapsed)
             {
-                map[mapCellPosition] = new MapCell
-                {
-                    Terrain = pattern.Cells[patternCellPosition].Terrain
-                };
+                map[mapCellPosition].Terrain = pattern.Cells[patternCellPosition].Terrain;
                 appliedCells.Add(mapCellPosition);
             }
         }
 
-        return new SequenceStep()
+        return new SequenceStep
         {
             Cells = appliedCells,
             Position = patternPosition,
@@ -393,19 +380,24 @@ public class OverlappedWfcGenerationStep : IGenerationStep
         return chaos;
     }
 
-    public void UnapplyLastStep(TileMap tileMap, Dictionary<Vector2I, MapCell> map, PriorityQueue<Vector2I, int> frontier, Stack<SequenceStep> sequence, List<Pattern> uniquePatterns)
+    public void UnapplyLastStep(TileMap tileMap, Dictionary<Vector2I, MapCell> map, PriorityQueue<Vector2I, int> frontier, HashSet<Vector2I> frontierTracker, Stack<SequenceStep> sequence, List<Pattern> uniquePatterns)
     {
         SequenceStep previousStep = sequence.Pop();
+
+        var positions = new Godot.Collections.Array<Vector2I>();
 
         foreach (var cell in previousStep.Cells)
         {
             int chaos = GetChaosValue(map, tileMap, cell, uniquePatterns);
 
             map[cell].Terrain = UNSET_TERRAIN;
-            tileMap.SetCellsTerrainConnect(0, new() { cell }, 0, 0);
+
+            positions.Add(cell);
 
             frontier.Enqueue(cell, chaos);
         }
+
+        tileMap.SetCellsTerrainConnect(0, positions, 0, 0); // TODO: Make this depend on the render mode...
 
         SequenceStep previousStep2 = sequence.Peek(); // TODO: Sometimes this throws an exception (empty stack), especially for PatternSize = 3. Figure out why.
         previousStep2.TriedPatterns ??= new List<(Pattern, Vector2I)>();
