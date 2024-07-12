@@ -18,9 +18,11 @@ namespace ProjectMatchstick.Services.Generation.Steps;
 //      This is lower priority, I think. Might also be fixed by fixing the sequeunce?
 public class OverlappedWfcGenerationStep : IGenerationStep
 {
+    private const int UNSET_TERRAIN = 0;
+
     public class Pattern
     {
-        public Dictionary<Vector2I, Cell> Cells { get; set; }
+        public Dictionary<Vector2I, PatternCell> Cells { get; set; }
         public int Frequency { get; set; }
 
         public override int GetHashCode()
@@ -54,12 +56,17 @@ public class OverlappedWfcGenerationStep : IGenerationStep
         }
     }
 
-    public class Cell
+    public class PatternCell
+    {
+        public int Terrain { get; set; }
+        public bool IsRotatable { get; set; }
+    }
+
+    public class MapCell
     {
         public int Terrain { get; set; }
         public int Chaos { get; set; }
-        public bool IsCollapsed { get => Terrain != -1; }
-        public bool IsRotatable { get; set; }
+        public bool IsCollapsed { get => Terrain != UNSET_TERRAIN; }
     }
 
     public class SequenceStep
@@ -74,7 +81,7 @@ public class OverlappedWfcGenerationStep : IGenerationStep
     
     public int PatternSize { get; set; }
 
-    public Dictionary<Vector2I, Cell> Sample { get; set; }
+    public Dictionary<Vector2I, PatternCell> Sample { get; set; }
 
     public Random Random { get; set; } = new Random();
 
@@ -83,7 +90,7 @@ public class OverlappedWfcGenerationStep : IGenerationStep
     public List<Vector2I> Generate(TileMap tileMap, List<Vector2I> targetCells, GenerationRenderMode mode)
     {
         List<Pattern> uniquePatterns = ExtractUniquePatterns(tileMap);
-        Dictionary<Vector2I, Cell> map = InitializeMap(tileMap, targetCells, uniquePatterns);
+        Dictionary<Vector2I, MapCell> map = InitializeMap(tileMap, targetCells, uniquePatterns);
         PriorityQueue<Vector2I, int> frontier = InitializeFrontier(tileMap, map, uniquePatterns);
 
         var frontierTracker = new HashSet<Vector2I>();
@@ -100,30 +107,13 @@ public class OverlappedWfcGenerationStep : IGenerationStep
                 /* Check that the cell is not already collapsed before proceeding. */
                 continue;
             }
-
-            // :/
             
             (Pattern pattern, Vector2I patternPosition) = SelectPattern(map, uniquePatterns, candidatePosition, sequeunce);
 
             if (pattern == null)
             {
                 /* No valid pattern found at this position. Undo the last step and try a different step. */
-
-                SequenceStep previousStep = sequeunce.Pop();
-
-                foreach (var cell in previousStep.Cells)
-                {
-                    int chaos = GetChaosValue(map, tileMap, cell, uniquePatterns);
-
-                    map.Remove(cell);
-
-                    frontier.Enqueue(cell, chaos);
-                }
-
-                SequenceStep previousStep2 = sequeunce.Peek(); // TODO: Sometimes this throws an exception (empty stack), especially for PatternSize = 3. Figure out why.
-                previousStep2.TriedPatterns ??= new List<(Pattern, Vector2I)>();
-                previousStep2.TriedPatterns.Add((previousStep.Pattern, previousStep.Position));
-
+                UnapplyLastStep(tileMap, map, frontier, sequeunce, uniquePatterns);
                 continue;
             }
 
@@ -157,15 +147,15 @@ public class OverlappedWfcGenerationStep : IGenerationStep
     /// <summary>
     /// Initialize a dictionary representing the state of the world.
     /// </summary>
-    public Dictionary<Vector2I, Cell> InitializeMap(TileMap tileMap, List<Vector2I> targetCells, List<Pattern> uniquePatterns)
+    public Dictionary<Vector2I, MapCell> InitializeMap(TileMap tileMap, List<Vector2I> targetCells, List<Pattern> uniquePatterns)
     {
-        var map = new Dictionary<Vector2I, Cell>();
+        var map = new Dictionary<Vector2I, MapCell>();
 
         foreach (Vector2I cell in targetCells)
         {
-            map[cell] = new Cell
+            map[cell] = new MapCell
             {
-                Terrain = -1,
+                Terrain = UNSET_TERRAIN,
                 Chaos = int.MaxValue
             };
         }
@@ -174,7 +164,7 @@ public class OverlappedWfcGenerationStep : IGenerationStep
 
         foreach (Vector2I cell in usedCells)
         {
-            map[cell] = new Cell
+            map[cell] = new MapCell
             {
                 Terrain = tileMap.GetCellTileData(0, cell).Terrain
             };
@@ -191,7 +181,7 @@ public class OverlappedWfcGenerationStep : IGenerationStep
     /// <summary>
     /// Add intial positions to the frontier. The frontier exists for optimization purposes.
     /// </summary>
-    public PriorityQueue<Vector2I, int> InitializeFrontier(TileMap tileMap, Dictionary<Vector2I, Cell> map, List<Pattern> uniquePatterns)
+    public PriorityQueue<Vector2I, int> InitializeFrontier(TileMap tileMap, Dictionary<Vector2I, MapCell> map, List<Pattern> uniquePatterns)
     {
         var frontier = new PriorityQueue<Vector2I, int>();
 
@@ -220,7 +210,7 @@ public class OverlappedWfcGenerationStep : IGenerationStep
 
         foreach (Vector2I position in Sample.Keys)
         {
-            Dictionary<Vector2I, Cell> unrotatedPattern = MapHelper.GetSubmap(Sample, PatternShape.Cells, position);
+            Dictionary<Vector2I, PatternCell> unrotatedPattern = MapHelper.GetSubmap(Sample, PatternShape.Cells, position);
             var patternRotations = new List<Pattern>();
 
             if (unrotatedPattern == null)
@@ -274,7 +264,7 @@ public class OverlappedWfcGenerationStep : IGenerationStep
     /// Select a single pattern at a position to apply. The pattern will overlap the least chaotic cell and overlap at least one collapsed cell.
     /// The position is the corner cell corresponding to the min X and min Y of the pattern.
     /// </summary>
-    public (Pattern, Vector2I) SelectPattern(Dictionary<Vector2I, Cell> map, List<Pattern> uniquePatterns, Vector2I candidatePosition, Stack<SequenceStep> sequence)
+    public (Pattern, Vector2I) SelectPattern(Dictionary<Vector2I, MapCell> map, List<Pattern> uniquePatterns, Vector2I candidatePosition, Stack<SequenceStep> sequence)
     {
         var validPatternsAndPositions = new List<(Pattern, Vector2I)>();
 
@@ -310,7 +300,7 @@ public class OverlappedWfcGenerationStep : IGenerationStep
     /// <summary>
     /// Can the pattern at the position be applied? If the pattern correctly overlaps the map (any overlap has the same cell type) then true.
     /// </summary>
-    public bool CanApplyPatternAt(Dictionary<Vector2I, Cell> map, Pattern pattern, Vector2I patternPosition)
+    public bool CanApplyPatternAt(Dictionary<Vector2I, MapCell> map, Pattern pattern, Vector2I patternPosition)
     {
         int overlaps = 0;
 
@@ -338,7 +328,7 @@ public class OverlappedWfcGenerationStep : IGenerationStep
     /// <returns>
     /// A SequenceStep containing the position of the pattern and the cells that were applied.
     /// </returns>
-    public SequenceStep ApplyPatternAt(Dictionary<Vector2I, Cell> map, Pattern pattern, Vector2I patternPosition)
+    public SequenceStep ApplyPatternAt(Dictionary<Vector2I, MapCell> map, Pattern pattern, Vector2I patternPosition)
     {
         var appliedCells = new List<Vector2I>();
 
@@ -353,7 +343,10 @@ public class OverlappedWfcGenerationStep : IGenerationStep
 
             if (!value.IsCollapsed)
             {
-                map[mapCellPosition] = pattern.Cells[patternCellPosition];
+                map[mapCellPosition] = new MapCell
+                {
+                    Terrain = pattern.Cells[patternCellPosition].Terrain
+                };
                 appliedCells.Add(mapCellPosition);
             }
         }
@@ -369,7 +362,7 @@ public class OverlappedWfcGenerationStep : IGenerationStep
     /// <summary>
     /// Gets the "chaos" of the cell. Chaos is essentially a count of how many patterns are valid given this cell and the state of the world.
     /// </summary>
-    public int GetChaosValue(Dictionary<Vector2I, Cell> map, TileMap tileMap, Vector2I cellPosition, List<Pattern> uniquePatterns)
+    public int GetChaosValue(Dictionary<Vector2I, MapCell> map, TileMap tileMap, Vector2I cellPosition, List<Pattern> uniquePatterns)
     {
         int chaos = 0;
 
@@ -398,5 +391,24 @@ public class OverlappedWfcGenerationStep : IGenerationStep
         }
 
         return chaos;
+    }
+
+    public void UnapplyLastStep(TileMap tileMap, Dictionary<Vector2I, MapCell> map, PriorityQueue<Vector2I, int> frontier, Stack<SequenceStep> sequence, List<Pattern> uniquePatterns)
+    {
+        SequenceStep previousStep = sequence.Pop();
+
+        foreach (var cell in previousStep.Cells)
+        {
+            int chaos = GetChaosValue(map, tileMap, cell, uniquePatterns);
+
+            map[cell].Terrain = UNSET_TERRAIN;
+            tileMap.SetCellsTerrainConnect(0, new() { cell }, 0, 0);
+
+            frontier.Enqueue(cell, chaos);
+        }
+
+        SequenceStep previousStep2 = sequence.Peek(); // TODO: Sometimes this throws an exception (empty stack), especially for PatternSize = 3. Figure out why.
+        previousStep2.TriedPatterns ??= new List<(Pattern, Vector2I)>();
+        previousStep2.TriedPatterns.Add((previousStep.Pattern, previousStep.Position));
     }
 }

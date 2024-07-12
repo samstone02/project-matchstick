@@ -156,7 +156,7 @@ public class OverlappedWfcGenerationStepTests
     public void CallApplyPattern_With2x2EmptyTargetAndValidPattern_ReturnsTrue()
     {
         var wfc = new OverlappedWfcGenerationStep();
-        var map = new Dictionary<Vector2I, Cell>();
+        var map = new Dictionary<Vector2I, PatternCell>();
 
         var targetCellsSet = new HashSet<Vector2I>
         {
@@ -187,7 +187,7 @@ public class OverlappedWfcGenerationStepTests
     {
         var wfc = new OverlappedWfcGenerationStep();
         
-        var map = new Dictionary<Vector2I, Cell>
+        var map = new Dictionary<Vector2I, PatternCell>
         {
             { new(0, 0), new() { Terrain = 1 } }
         };
@@ -221,7 +221,7 @@ public class OverlappedWfcGenerationStepTests
     {
         var wfc = new OverlappedWfcGenerationStep();
 
-        var map = new Dictionary<Vector2I, Cell>
+        var map = new Dictionary<Vector2I, PatternCell>
         {
             { new(0, 0), new() { Terrain = 1 } },
             { new(1, 1), new() { Terrain = 1 } }
@@ -256,7 +256,7 @@ public class OverlappedWfcGenerationStepTests
     {
         var wfc = new OverlappedWfcGenerationStep();
 
-        var map = new Dictionary<Vector2I, Cell>
+        var map = new Dictionary<Vector2I, PatternCell>
         {
             { new(0, 0), new() { Terrain = 1 } }
         };
@@ -290,7 +290,7 @@ public class OverlappedWfcGenerationStepTests
     {
         var wfc = new OverlappedWfcGenerationStep();
 
-        var map = new Dictionary<Vector2I, Cell>
+        var map = new Dictionary<Vector2I, PatternCell>
         {
             { new(0, 0), new() { Terrain = 1 } },
             { new(1, 1), new() { Terrain = 1 } },
@@ -324,7 +324,7 @@ public class OverlappedWfcGenerationStepTests
     public void CallApplyPattern_With2x2TargetAndPatternOutOfBounds_ReturnsFalse()
     {
         var wfc = new OverlappedWfcGenerationStep();
-        var map = new Dictionary<Vector2I, Cell>();
+        var map = new Dictionary<Vector2I, PatternCell>();
 
         var targetCellsSet = new HashSet<Vector2I>
         {
@@ -354,7 +354,7 @@ public class OverlappedWfcGenerationStepTests
     public void CallApplyPattern_With2x2TargetAndApplyCoordinatesOutOfBounds_ReturnsFalse()
     {
         var wfc = new OverlappedWfcGenerationStep();
-        var map = new Dictionary<Vector2I, Cell>();
+        var map = new Dictionary<Vector2I, PatternCell>();
 
         var targetCellsSet = new HashSet<Vector2I>
         {

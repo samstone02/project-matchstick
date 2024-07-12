@@ -33,8 +33,8 @@ public partial class DemoRuins1Generator : Node
 
     public override void _Ready()
     {
-        var thread = new Thread(() =>
-        {
+        //var thread = new Thread(() =>
+        //{
             GD.Print("Finished!");
 
             var tiles = new List<Vector2I>();
@@ -51,12 +51,14 @@ public partial class DemoRuins1Generator : Node
 
             var overlappedWfc = new OverlappedWfcGenerationStep
             {
-                Sample = sample.GetUsedCells(0).ToDictionary(vec => vec, vec => {
-                    TileData sampleData = sample.GetCellTileData(0, vec);
-                    return new OverlappedWfcGenerationStep.Cell() { 
+                Sample = sample.GetUsedCells(0).ToDictionary(kv => kv, kv =>
+                {
+                    TileData sampleData = sample.GetCellTileData(0, kv);
+                    return new OverlappedWfcGenerationStep.PatternCell()
+                    { 
                         IsRotatable = (bool) sampleData.GetCustomData("IsRotatable"),
                         Terrain = sampleData.Terrain
-                };
+                    };
                 }),
                 PatternSize = 2,
                 //PatternShape = new HexagonPatternShape(2),
@@ -68,8 +70,8 @@ public partial class DemoRuins1Generator : Node
             overlappedWfc.Generate(Map, tiles, GenerationRenderMode.IMMEDIATE);
 
             GD.Print("Finished!");
-        });
+        //});
 
-        thread.Start();
+        //thread.Start();
     }
 }
