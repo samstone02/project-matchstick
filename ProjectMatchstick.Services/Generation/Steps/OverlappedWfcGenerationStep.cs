@@ -7,6 +7,7 @@ using System.Linq;
 
 namespace ProjectMatchstick.Services.Generation.Steps;
 
+// TODO: How should we handle ChaosValues of zero? 
 // TODO: Fix the empty stack / sequence issue. Sometimes throws an exception on Peek.
 //      Probably because the stack size = 1, then we Pop, then we Peek and now empty stack.
 // TODO: Fix the missing cells issue. Sometimes cells will simply be skipped. Don't know why.
@@ -90,7 +91,7 @@ public class OverlappedWfcGenerationStep : IGenerationStep
     {
         List<Pattern> uniquePatterns = ExtractUniquePatterns();
         Dictionary<Vector2I, MapCell> map = InitializeMap(tileMap, targetCells, uniquePatterns);
-        PriorityQueue<Vector2I, int> frontier = InitializeFrontier(tileMap, map, uniquePatterns);
+        PriorityQueue<Vector2I, int> frontier = InitializeFrontier(tileMap, map, uniquePatterns); // Should the frontier be something else to prevent duplicates?
 
         var sequeunce = new Stack<SequenceStep>();
 
@@ -127,7 +128,10 @@ public class OverlappedWfcGenerationStep : IGenerationStep
                         continue;
                     }
 
-                    frontier.Enqueue(neighbor, GetChaosValue(map, tileMap, neighbor, uniquePatterns));
+                    int chaos = GetChaosValue(map, tileMap, neighbor, uniquePatterns);
+                    chaos = chaos == 0 ? -1 : chaos;
+
+                    frontier.Enqueue(neighbor, chaos);
                     map[neighbor].IsFrontier = true;
                 }
             }
@@ -400,8 +404,8 @@ public class OverlappedWfcGenerationStep : IGenerationStep
             frontier.Enqueue(cell, chaos);
         }
 
-        //frontier.Enqueue(previousStep.Position, 0);
-        //frontier.Enqueue(candidatePosition, GetChaosValue(map, tileMap, candidatePosition, uniquePatterns)); // this line fucks it up
+        frontier.Enqueue(previousStep.Position, 0);
+        frontier.Enqueue(candidatePosition, GetChaosValue(map, tileMap, candidatePosition, uniquePatterns)); // this line fucks it up
 
         tileMap.SetCellsTerrainConnect(0, new Godot.Collections.Array<Vector2I>(previousStep.Cells), 0, 0); // TODO: Make this depend on the render mode...
 
