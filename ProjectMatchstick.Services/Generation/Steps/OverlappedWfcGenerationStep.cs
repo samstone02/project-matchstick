@@ -293,6 +293,7 @@ public class OverlappedWfcGenerationStep : IGenerationStep
     public bool CanApplyPatternAt(Dictionary<Vector2I, MapCell> map, Pattern pattern, Vector2I patternPosition)
     {
         int overlaps = 0;
+        int empty = 0;
 
         foreach (Vector2I cellPosition in pattern.Cells.Keys)
         {
@@ -307,9 +308,13 @@ public class OverlappedWfcGenerationStep : IGenerationStep
                     return false;
                 }
             }
+            else
+            {
+                empty++;
+        }
         }
 
-        return overlaps > 0;
+        return overlaps > 0 && empty > 0;
     }
 
     /// <summary>
