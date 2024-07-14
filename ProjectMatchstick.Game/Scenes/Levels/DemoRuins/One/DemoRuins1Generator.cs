@@ -33,8 +33,8 @@ public partial class DemoRuins1Generator : Node
 
     public override void _Ready()
     {
-        //var thread = new Thread(() =>
-        //{
+        var thread = new Thread(() =>
+        {
             GD.Print("Finished!");
 
             var tiles = new List<Vector2I>();
@@ -70,8 +70,8 @@ public partial class DemoRuins1Generator : Node
             overlappedWfc.Generate(Map, tiles, GenerationRenderMode.IMMEDIATE);
 
             GD.Print("Finished!");
-        //});
+        });
 
-        //thread.Start();
+        thread.Start();
     }
 }

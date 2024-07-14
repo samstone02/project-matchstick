@@ -7,11 +7,10 @@ using System.Linq;
 
 namespace ProjectMatchstick.Services.Generation.Steps;
 
-// TODO: It looks like cells on the edge of the sample are being misread as able to be next to anything?
-//      This is not how it should work, make it so cells on the border can only be next to cells next to them in the sample.
 // TODO: Fix the empty stack / sequence issue. Sometimes throws an exception on Peek.
 //      Probably because the stack size = 1, then we Pop, then we Peek and now empty stack.
 // TODO: Fix the missing cells issue. Sometimes cells will simply be skipped. Don't know why.
+//      - Something with the frontier and/or the sequeunce is causing this I think
 // TODO: There is a scenario where tiles that don't appear next to eachother in the sample can be placed next to eachother.
 //      This happens when a Pattern is applied in a valid spot, but an immediate neighbor to one of the applied cells is not valid accoring to the sample.
 //      This is lower priority, I think. Might also be fixed by fixing the sequeunce?
@@ -93,7 +92,6 @@ public class OverlappedWfcGenerationStep : IGenerationStep
         Dictionary<Vector2I, MapCell> map = InitializeMap(tileMap, targetCells, uniquePatterns);
         PriorityQueue<Vector2I, int> frontier = InitializeFrontier(tileMap, map, uniquePatterns);
 
-        var frontierTracker = new HashSet<Vector2I>();
         var sequeunce = new Stack<SequenceStep>();
 
         while (frontier.Count > 0)
@@ -113,7 +111,7 @@ public class OverlappedWfcGenerationStep : IGenerationStep
             if (pattern == null)
             {
                 /* No valid pattern found at this position. Undo the last step and try a different step. */
-                UnapplyLastStep(tileMap, map, frontier, frontierTracker, sequeunce, uniquePatterns);
+                UnapplyLastStep(tileMap, map, frontier, sequeunce, uniquePatterns, candidatePosition);
                 continue;
             }
 
@@ -124,13 +122,13 @@ public class OverlappedWfcGenerationStep : IGenerationStep
             {
                 foreach (Vector2I neighbor in tileMap.GetSurroundingCells(collapsedCell))
                 {
-                    if (!map.TryGetValue(neighbor, out var value2) || value2.IsCollapsed || frontierTracker.Contains(neighbor))
+                    if (!map.TryGetValue(neighbor, out var value2) || value2.IsCollapsed || value2.IsFrontier)
                     {
                         continue;
                     }
 
                     frontier.Enqueue(neighbor, GetChaosValue(map, tileMap, neighbor, uniquePatterns));
-                    frontierTracker.Add(neighbor);
+                    map[neighbor].IsFrontier = true;
                 }
             }
 
@@ -385,24 +383,27 @@ public class OverlappedWfcGenerationStep : IGenerationStep
         return chaos;
     }
 
-    public void UnapplyLastStep(TileMap tileMap, Dictionary<Vector2I, MapCell> map, PriorityQueue<Vector2I, int> frontier, HashSet<Vector2I> frontierTracker, Stack<SequenceStep> sequence, List<Pattern> uniquePatterns)
+    public void UnapplyLastStep(TileMap tileMap, Dictionary<Vector2I, MapCell> map, PriorityQueue<Vector2I, int> frontier, Stack<SequenceStep> sequence,
+        List<Pattern> uniquePatterns, Vector2I candidatePosition)
     {
         SequenceStep previousStep = sequence.Pop();
 
-        var positions = new Godot.Collections.Array<Vector2I>();
+        foreach (var cell in previousStep.Cells)
+        {
+            map[cell].Terrain = UNSET_TERRAIN;
+        }
 
         foreach (var cell in previousStep.Cells)
         {
             int chaos = GetChaosValue(map, tileMap, cell, uniquePatterns);
-
-            map[cell].Terrain = UNSET_TERRAIN;
-
-            positions.Add(cell);
-
+            map[cell].Chaos = chaos;
             frontier.Enqueue(cell, chaos);
         }
 
-        tileMap.SetCellsTerrainConnect(0, positions, 0, 0); // TODO: Make this depend on the render mode...
+        //frontier.Enqueue(previousStep.Position, 0);
+        //frontier.Enqueue(candidatePosition, GetChaosValue(map, tileMap, candidatePosition, uniquePatterns)); // this line fucks it up
+
+        tileMap.SetCellsTerrainConnect(0, new Godot.Collections.Array<Vector2I>(previousStep.Cells), 0, 0); // TODO: Make this depend on the render mode...
 
         SequenceStep previousStep2 = sequence.Peek(); // TODO: Sometimes this throws an exception (empty stack), especially for PatternSize = 3. Figure out why.
         previousStep2.TriedPatterns ??= new List<(Pattern, Vector2I)>();
