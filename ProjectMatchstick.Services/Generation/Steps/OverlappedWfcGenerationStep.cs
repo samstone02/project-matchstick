@@ -17,7 +17,7 @@ namespace ProjectMatchstick.Services.Generation.Steps;
 //      This is lower priority, I think. Might also be fixed by fixing the sequeunce?
 public class OverlappedWfcGenerationStep : IGenerationStep
 {
-    private const int UNSET_TERRAIN = 0;
+    private const int UNSET_TERRAIN = -1;
 
     public class Pattern
     {
@@ -26,7 +26,8 @@ public class OverlappedWfcGenerationStep : IGenerationStep
 
         public override int GetHashCode()
         {
-            return Cells.Sum(kv => kv.Value.Terrain);
+            // TODO: Optimize hash codes to reduce collisions?
+            return Cells.Sum(kv => kv.Value.Terrain * kv.Value.Terrain);
         }
 
         public override bool Equals(object obj)
@@ -42,7 +43,7 @@ public class OverlappedWfcGenerationStep : IGenerationStep
                 {
                     var contains = other.Cells.TryGetValue(key, out var value);
 
-                    if (!contains || Cells[key] != value)
+                    if (!contains || Cells[key].Terrain != value.Terrain)
                     {
                         return false;
                     }
@@ -107,7 +108,7 @@ public class OverlappedWfcGenerationStep : IGenerationStep
                 continue;
             }
             
-            (Pattern pattern, Vector2I patternPosition) = SelectPattern(map, uniquePatterns, candidatePosition, sequeunce);
+            (Pattern pattern, Vector2I patternPosition) = SelectPattern(tileMap, map, uniquePatterns, candidatePosition, sequeunce);
 
             if (pattern == null)
             {
@@ -256,7 +257,7 @@ public class OverlappedWfcGenerationStep : IGenerationStep
     /// Select a single pattern at a position to apply. The pattern will overlap the least chaotic cell and overlap at least one collapsed cell.
     /// The position is the corner cell corresponding to the min X and min Y of the pattern.
     /// </summary>
-    public (Pattern, Vector2I) SelectPattern(Dictionary<Vector2I, MapCell> map, List<Pattern> uniquePatterns, Vector2I candidatePosition, Stack<SequenceStep> sequence)
+    public (Pattern, Vector2I) SelectPattern(TileMap tileMap, Dictionary<Vector2I, MapCell> map, List<Pattern> uniquePatterns, Vector2I candidatePosition, Stack<SequenceStep> sequence)
     {
         var validPatternsAndPositions = new List<(Pattern, Vector2I)>();
 
@@ -270,7 +271,7 @@ public class OverlappedWfcGenerationStep : IGenerationStep
                     && value.TriedPatterns != null
                     && value.TriedPatterns.Contains((pattern, patternPosition));
 
-                if (CanApplyPatternAt(map, pattern, patternPosition) && !wasPatternTriedPreviously)
+                if (CanApplyPatternAt(tileMap, map, pattern, patternPosition) && !wasPatternTriedPreviously)
                 {
                     validPatternsAndPositions.Add((pattern, patternPosition));
                 }
@@ -290,9 +291,10 @@ public class OverlappedWfcGenerationStep : IGenerationStep
     }
 
     /// <summary>
-    /// Can the pattern at the position be applied? If the pattern correctly overlaps the map (any overlap has the same cell type) then true.
+    /// Can the pattern at the position be applied? If the pattern correctly overlaps the map (any overlap has the same cell type)
+    /// and the pattern will not be placed adjacent to any existing cells then true.
     /// </summary>
-    public bool CanApplyPatternAt(Dictionary<Vector2I, MapCell> map, Pattern pattern, Vector2I patternPosition)
+    public bool CanApplyPatternAt(TileMap tileMap, Dictionary<Vector2I, MapCell> map, Pattern pattern, Vector2I patternPosition)
     {
         int overlaps = 0;
         int empty = 0;
@@ -313,7 +315,25 @@ public class OverlappedWfcGenerationStep : IGenerationStep
             else
             {
                 empty++;
-        }
+                continue;
+            }
+
+            /* Check if the pattern will be adjacently placed next to any existing cells. */
+            /* If so, return false since placing adjacently could result in invalid cell adjacencies. */
+            foreach (Vector2I neighborPosition in tileMap.GetSurroundingCells(cellPosition))
+            {
+                bool isInPattern = pattern.Cells.ContainsKey(neighborPosition - patternPosition);
+
+                if (isInPattern) 
+                {
+                    continue;
+                }
+
+                if (map.TryGetValue(neighborPosition, out var value2) && value2.IsCollapsed && !value.IsCollapsed)
+                {
+                    return false;
+                }
+            }
         }
 
         return overlaps > 0 && empty > 0;
@@ -376,7 +396,7 @@ public class OverlappedWfcGenerationStep : IGenerationStep
             {
                 foreach (var patternCellPosition in pattern.Cells.Keys)
                 {
-                    if (CanApplyPatternAt(map, pattern, cellPosition + patternCellPosition))
+                    if (CanApplyPatternAt(tileMap, map, pattern, cellPosition + patternCellPosition))
                     {
                         chaos++;
                     }
