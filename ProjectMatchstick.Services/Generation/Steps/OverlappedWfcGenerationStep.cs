@@ -201,6 +201,30 @@ public class OverlappedWfcGenerationStep : IGenerationStep
                 if (map.TryGetValue(neighbor, out var value) && !value.IsCollapsed)
                 {
                     frontier.Enqueue(neighbor, GetChaosValue(map, tileMap, neighbor, uniquePatterns));
+                    map[neighbor].IsFrontier = true;
+                }
+            }
+        }
+
+        return frontier;
+    }
+
+    /// <summary>
+    /// Add intial positions to the frontier. The frontier exists for optimization purposes.
+    /// </summary>
+    public List<Vector2I> InitializeFrontierV2(TileMap tileMap, Dictionary<Vector2I, MapCell> map, List<Pattern> uniquePatterns)
+    {
+        var frontier = new List<Vector2I>();
+
+        foreach (Vector2I cell in tileMap.GetUsedCells(0))
+        {
+            foreach (var neighbor in tileMap.GetSurroundingCells(cell))
+            {
+                if (map.TryGetValue(neighbor, out var value) && !value.IsCollapsed)
+                {
+                    frontier.Add(neighbor);
+                    map[neighbor].IsFrontier = true;
+                    map[neighbor].Chaos = GetChaosValue(map, tileMap, neighbor, uniquePatterns);
                 }
             }
         }
