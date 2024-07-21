@@ -73,11 +73,24 @@ public class HexagonPatternShape : IPatternShape
             .ToDictionary(kv => kv.Key, kv => kv.Value);
     }
 
-    public bool IsOrthogonal(Vector2I vector1, Vector2I vector2)
+    public bool AreAdjacent(Vector2I vector1, Vector2I vector2)
     {
         return Math.Abs(vector1.X - vector2.X) == 0 && Math.Abs(vector1.Y - vector2.Y) == 1
             || Math.Abs(vector1.X - vector2.X) == 1 && Math.Abs(vector1.Y - vector2.Y) == 0
             || vector1.X - vector2.X == 1 && vector1.Y - vector2.Y == -1
             || vector1.X - vector2.X == -1 && vector1.Y - vector2.Y == 1;
+    }
+
+    public List<Vector2I> GetAdjacencies(Vector2I position)
+    {
+        return new List<Vector2I>
+        {
+            new Vector2I(position.X + 1, position.Y),
+            new Vector2I(position.X - 1, position.Y),
+            new Vector2I(position.X, position.Y + 1),
+            new Vector2I(position.X, position.Y - 1),
+            new Vector2I(position.X - 1, position.Y + 1),
+            new Vector2I(position.X + 1, position.Y - 1),
+        };
     }
 }

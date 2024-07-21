@@ -14,8 +14,7 @@ public interface IPatternShape
     /// <summary>
     /// Are the two vectors orthogonal?
     /// </summary>
-    /// <param name="vector1"></param>
-    /// <param name="vector2"></param>
-    /// <returns>Wether the vectors are orthogonal or not.</returns>
-    public bool IsOrthogonal(Vector2I vector1, Vector2I vector2);
+    public bool AreAdjacent(Vector2I vector1, Vector2I vector2);
+
+    public List<Vector2I> GetAdjacencies(Vector2I position);
 }
