@@ -17,7 +17,7 @@ namespace ProjectMatchstick.Services.Generation.Steps;
 //      This is lower priority, I think. Might also be fixed by fixing the sequeunce?
 public class OverlappedWfcGenerationStep : IGenerationStep
 {
-    private const int UNSET_TERRAIN = -1;
+    private const int UNSET_TERRAIN = 0;
 
     public class Pattern
     {
@@ -67,7 +67,7 @@ public class OverlappedWfcGenerationStep : IGenerationStep
         public int Terrain { get; set; }
         public int Chaos { get; set; }
         public bool IsCollapsed { get => Terrain != UNSET_TERRAIN; }
-        public bool IsFrontier {  get; set; } // TODO: Use this instead of the frontier data struct
+        public bool IsFrontier {  get; set; }
     }
 
     public class SequenceStep
@@ -75,6 +75,10 @@ public class OverlappedWfcGenerationStep : IGenerationStep
         public Pattern Pattern { get; set; }
         public Vector2I Position { get; set; }
         public List<Vector2I> Cells { get; set; }
+        /// <summary>
+        /// The cells which were part of the frontier before apply the pattern.
+        /// </summary>
+        public List<Vector2I> FrontieredCells { get; set; }
         public List<(Pattern, Vector2I)> TriedPatterns { get; set; }
     }
 
@@ -95,6 +99,7 @@ public class OverlappedWfcGenerationStep : IGenerationStep
         PriorityQueue<Vector2I, int> frontier = InitializeFrontier(tileMap, map, uniquePatterns); // Should the frontier be something else to prevent duplicates?
 
         var sequeunce = new Stack<SequenceStep>();
+        sequeunce.Push(new SequenceStep());
 
         while (frontier.Count > 0)
         {
@@ -130,7 +135,7 @@ public class OverlappedWfcGenerationStep : IGenerationStep
                     }
 
                     int chaos = GetChaosValue(map, tileMap, neighbor, uniquePatterns);
-                    chaos = chaos == 0 ? -1 : chaos;
+                    chaos = chaos == 0 ? -1 : chaos; // Enqueue with -1 to ensure they get popped first...
 
                     frontier.Enqueue(neighbor, chaos);
                     map[neighbor].IsFrontier = true;
@@ -271,7 +276,7 @@ public class OverlappedWfcGenerationStep : IGenerationStep
                     && value.TriedPatterns != null
                     && value.TriedPatterns.Contains((pattern, patternPosition));
 
-                if (CanApplyPatternAt(tileMap, map, pattern, patternPosition) && !wasPatternTriedPreviously)
+                if (!wasPatternTriedPreviously && CanApplyPatternAt(tileMap, map, pattern, patternPosition))
                 {
                     validPatternsAndPositions.Add((pattern, patternPosition));
                 }
@@ -299,11 +304,19 @@ public class OverlappedWfcGenerationStep : IGenerationStep
         int overlaps = 0;
         int empty = 0;
 
-        foreach (Vector2I cellPosition in pattern.Cells.Keys)
+        foreach (Vector2I cellPositionInPattern in pattern.Cells.Keys)
         {
-            if (map.TryGetValue(patternPosition + cellPosition, out var value) && value.IsCollapsed)
+            Vector2I cellPositionInMap = patternPosition + cellPositionInPattern;
+            bool isInMap = map.TryGetValue(cellPositionInMap, out var mapCell);
+
+            if (!isInMap)
             {
-                if (value.Terrain == pattern.Cells[cellPosition].Terrain)
+                continue;
+            }
+
+            if (mapCell.IsCollapsed)
+            {
+                if (mapCell.Terrain == pattern.Cells[cellPositionInPattern].Terrain)
                 {
                     overlaps++;
                 }
@@ -315,25 +328,24 @@ public class OverlappedWfcGenerationStep : IGenerationStep
             else
             {
                 empty++;
-                continue;
             }
 
             /* Check if the pattern will be adjacently placed next to any existing cells. */
             /* If so, return false since placing adjacently could result in invalid cell adjacencies. */
-            foreach (Vector2I neighborPosition in tileMap.GetSurroundingCells(cellPosition))
-            {
-                bool isInPattern = pattern.Cells.ContainsKey(neighborPosition - patternPosition);
+            //foreach (Vector2I neighborPosition in tileMap.GetSurroundingCells(cellPositionInMap))
+            //{
+            //    bool isInPattern = pattern.Cells.ContainsKey(neighborPosition - patternPosition);
 
-                if (isInPattern) 
-                {
-                    continue;
-                }
+            //    if (isInPattern) 
+            //    {
+            //        continue;
+            //    }
 
-                if (map.TryGetValue(neighborPosition, out var value2) && value2.IsCollapsed && !value.IsCollapsed)
-                {
-                    return false;
-                }
-            }
+            //    if (map.TryGetValue(neighborPosition, out var value2) && value2.IsCollapsed && !mapCell.IsCollapsed)
+            //    {
+            //        return false;
+            //    }
+            //}
         }
 
         return overlaps > 0 && empty > 0;
@@ -348,28 +360,35 @@ public class OverlappedWfcGenerationStep : IGenerationStep
     public SequenceStep ApplyPatternAt(Dictionary<Vector2I, MapCell> map, Pattern pattern, Vector2I patternPosition)
     {
         var appliedCells = new List<Vector2I>();
+        var frontieredCells = new List<Vector2I>();
 
-        foreach (Vector2I patternCellPosition in pattern.Cells.Keys)
+        foreach (Vector2I cellPositionInPattern in pattern.Cells.Keys)
         {
-            var mapCellPosition = patternCellPosition + patternPosition;
+            var cellPositionInMap = cellPositionInPattern + patternPosition;
 
-            if (!map.TryGetValue(mapCellPosition, out var value))
+            if (!map.TryGetValue(cellPositionInMap, out var mapCell))
             {
                 continue;
             }
 
-            if (!value.IsCollapsed)
+            if (!mapCell.IsCollapsed)
             {
-                map[mapCellPosition].Terrain = pattern.Cells[patternCellPosition].Terrain;
-                appliedCells.Add(mapCellPosition);
+                map[cellPositionInMap].Terrain = pattern.Cells[cellPositionInPattern].Terrain;
+                appliedCells.Add(cellPositionInMap);
+                
+                if (mapCell.IsFrontier)
+                {
+                    frontieredCells.Add(cellPositionInMap);
+                }
             }
         }
 
         return new SequenceStep
         {
             Cells = appliedCells,
+            FrontieredCells = frontieredCells,
             Position = patternPosition,
-            Pattern = pattern
+            Pattern = pattern,
         };
     }
 
@@ -415,6 +434,7 @@ public class OverlappedWfcGenerationStep : IGenerationStep
         foreach (var cell in previousStep.Cells)
         {
             map[cell].Terrain = UNSET_TERRAIN;
+            map[cell].IsFrontier = false;
         }
 
         foreach (var cell in previousStep.Cells)
@@ -424,12 +444,15 @@ public class OverlappedWfcGenerationStep : IGenerationStep
             frontier.Enqueue(cell, chaos);
         }
 
-        frontier.Enqueue(previousStep.Position, 0);
-        frontier.Enqueue(candidatePosition, GetChaosValue(map, tileMap, candidatePosition, uniquePatterns)); // this line fucks it up
+        foreach (var frontieredCell in previousStep.FrontieredCells)
+        {
+            frontier.Enqueue(frontieredCell, GetChaosValue(map, tileMap, candidatePosition, uniquePatterns));
+            map[frontieredCell].IsFrontier = true;
+        }
 
-        tileMap.SetCellsTerrainConnect(0, new Godot.Collections.Array<Vector2I>(previousStep.Cells), 0, 0); // TODO: Make this depend on the render mode...
+        tileMap.SetCellsTerrainConnect(0, new Godot.Collections.Array<Vector2I>(previousStep.Cells), 0, UNSET_TERRAIN); // TODO: Make this depend on the render mode...
 
-        SequenceStep previousStep2 = sequence.Peek(); // TODO: Sometimes this throws an exception (empty stack), especially for PatternSize = 3. Figure out why.
+        SequenceStep previousStep2 = sequence.Peek(); // TODO: what to do if we pop the root sequeunce step?
         previousStep2.TriedPatterns ??= new List<(Pattern, Vector2I)>();
         previousStep2.TriedPatterns.Add((previousStep.Pattern, previousStep.Position));
     }
