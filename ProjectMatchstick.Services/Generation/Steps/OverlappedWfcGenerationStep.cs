@@ -210,29 +210,6 @@ public class OverlappedWfcGenerationStep : IGenerationStep
     }
 
     /// <summary>
-    /// Add intial positions to the frontier. The frontier exists for optimization purposes.
-    /// </summary>
-    public List<Vector2I> InitializeFrontierV2(TileMap tileMap, Dictionary<Vector2I, MapCell> map, List<Pattern> uniquePatterns)
-    {
-        var frontier = new List<Vector2I>();
-
-        foreach (Vector2I cell in tileMap.GetUsedCells(0))
-        {
-            foreach (var neighbor in tileMap.GetSurroundingCells(cell))
-            {
-                if (map.TryGetValue(neighbor, out var value) && !value.IsCollapsed)
-                {
-                    frontier.Add(neighbor);
-                    map[neighbor].IsFrontier = true;
-                    map[neighbor].Chaos = GetChaosValue(map, tileMap, neighbor, uniquePatterns);
-                }
-            }
-        }
-
-        return frontier;
-    }
-
-    /// <summary>
     /// Extract evey unique pattern from the sample. Depending on the PatternShape, it will include rotations.
     /// If the same pattern is encountered twice, the frequency is incremented.
     /// </summary>
