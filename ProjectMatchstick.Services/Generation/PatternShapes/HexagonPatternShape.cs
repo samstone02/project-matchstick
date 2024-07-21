@@ -72,4 +72,12 @@ public class HexagonPatternShape : IPatternShape
             .Where(kv => pattern.ContainsKey(kv.Key))
             .ToDictionary(kv => kv.Key, kv => kv.Value);
     }
+
+    public bool IsOrthogonal(Vector2I vector1, Vector2I vector2)
+    {
+        return Math.Abs(vector1.X - vector2.X) == 0 && Math.Abs(vector1.Y - vector2.Y) == 1
+            || Math.Abs(vector1.X - vector2.X) == 1 && Math.Abs(vector1.Y - vector2.Y) == 0
+            || vector1.X - vector2.X == 1 && vector1.Y - vector2.Y == -1
+            || vector1.X - vector2.X == -1 && vector1.Y - vector2.Y == 1;
+    }
 }

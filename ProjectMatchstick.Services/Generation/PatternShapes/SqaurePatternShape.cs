@@ -51,4 +51,10 @@ public class SqaurePatternShape : IPatternShape
 
         return MatrixHelper.ToVectorDictionary(rotatedMatrix);
     }
+
+    public bool IsOrthogonal(Vector2I vector1, Vector2I vector2)
+    {
+        return Math.Abs(vector1.X - vector2.X) == 0 && Math.Abs(vector1.Y - vector2.Y) == 1
+            || Math.Abs(vector1.X - vector2.X) == 1 && Math.Abs(vector1.Y - vector2.Y) == 0;
+    }
 }
