@@ -125,6 +125,7 @@ public class OverlappedWfcGenerationStep : IGenerationStep
             SequenceStep sequenceStep = ApplyPatternAt(map, pattern, patternPosition);
             sequeunce.Push(sequenceStep);
 
+            /* Expand the frontier */
             foreach (Vector2I collapsedCell in sequenceStep.Cells)
             {
                 foreach (Vector2I neighbor in tileMap.GetSurroundingCells(collapsedCell))
@@ -135,13 +136,14 @@ public class OverlappedWfcGenerationStep : IGenerationStep
                     }
 
                     int chaos = GetChaosValue(map, tileMap, neighbor, uniquePatterns);
-                    chaos = chaos == 0 ? -1 : chaos; // Enqueue with -1 to ensure they get popped first...
+                    chaos = chaos == 0 ? -1 : chaos; // Enqueue with -1 to ensure these cells with no valid patterns get popped first.
 
                     frontier.Enqueue(neighbor, chaos);
                     map[neighbor].IsFrontier = true;
                 }
             }
 
+            /* Rendering */
             foreach (var group in sequenceStep.Cells.GroupBy(c => map[c].Terrain))
             {
                 tileMap.SetCellsTerrainConnect(0, new Godot.Collections.Array<Vector2I>(group.ToList()), 0, group.Key);
@@ -373,13 +375,14 @@ public class OverlappedWfcGenerationStep : IGenerationStep
 
             if (!mapCell.IsCollapsed)
             {
-                map[cellPositionInMap].Terrain = pattern.Cells[cellPositionInPattern].Terrain;
-                appliedCells.Add(cellPositionInMap);
-                
                 if (mapCell.IsFrontier)
                 {
                     frontieredCells.Add(cellPositionInMap);
                 }
+
+                map[cellPositionInMap].Terrain = pattern.Cells[cellPositionInPattern].Terrain;
+                map[cellPositionInMap].IsFrontier = false;
+                appliedCells.Add(cellPositionInMap);
             }
         }
 
@@ -434,21 +437,19 @@ public class OverlappedWfcGenerationStep : IGenerationStep
         foreach (var cell in previousStep.Cells)
         {
             map[cell].Terrain = UNSET_TERRAIN;
-            map[cell].IsFrontier = false;
-        }
-
-        foreach (var cell in previousStep.Cells)
-        {
-            int chaos = GetChaosValue(map, tileMap, cell, uniquePatterns);
-            map[cell].Chaos = chaos;
-            frontier.Enqueue(cell, chaos);
         }
 
         foreach (var frontieredCell in previousStep.FrontieredCells)
         {
-            frontier.Enqueue(frontieredCell, GetChaosValue(map, tileMap, candidatePosition, uniquePatterns));
-            map[frontieredCell].IsFrontier = true;
+            if (!map[frontieredCell].IsFrontier)
+            {
+                frontier.Enqueue(frontieredCell, GetChaosValue(map, tileMap, candidatePosition, uniquePatterns));
+                map[frontieredCell].IsFrontier = true;
+            }
         }
+
+        frontier.Enqueue(candidatePosition, GetChaosValue(map, tileMap, candidatePosition, uniquePatterns));
+        map[candidatePosition].IsFrontier = true;
 
         tileMap.SetCellsTerrainConnect(0, new Godot.Collections.Array<Vector2I>(previousStep.Cells), 0, UNSET_TERRAIN); // TODO: Make this depend on the render mode...
 
