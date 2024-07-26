@@ -45,7 +45,7 @@ public class SqaurePatternShape : IPatternShape
 
         var matrix = MapHelper.ToMatrix(pattern);
 
-        var turns = ((int) degrees) / 90;
+        var turns = degrees / 90;
 
         var rotatedMatrix = MatrixHelper.RotateClockwise(matrix, turns);
 
