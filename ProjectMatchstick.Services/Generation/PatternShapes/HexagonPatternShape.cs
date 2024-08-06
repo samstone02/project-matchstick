@@ -2,6 +2,7 @@
 using ProjectMatchstick.Services.Helpers;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 
 namespace ProjectMatchstick.Services.Generation.PatternShapes;
@@ -13,6 +14,8 @@ public class HexagonPatternShape : IPatternShape
     private readonly List<Vector2I> _cells;
 
     public IEnumerable<int> SuperimposedRotations => _rotations;
+
+    public bool CanCloseGaps { get => true; }
 
     public IEnumerable<Vector2I> Cells => _cells;
 

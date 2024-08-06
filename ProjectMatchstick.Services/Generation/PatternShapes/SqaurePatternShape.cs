@@ -1,8 +1,10 @@
 ﻿using Godot;
+using ProjectMatchstick.Services.Generation.Steps;
 using ProjectMatchstick.Services.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using static ProjectMatchstick.Services.Generation.Steps.OverlappedWfcGenerationStep;
 
 namespace ProjectMatchstick.Services.Generation.PatternShapes;
 
@@ -14,7 +16,11 @@ public class SqaurePatternShape : IPatternShape
 
     public IEnumerable<int> SuperimposedRotations => _rotations;
 
+    public bool CanCloseGaps { get => Size != 2; }
+
     public IEnumerable<Vector2I> Cells => _cells;
+
+    public int Size { get; }
 
     public SqaurePatternShape(int size)
     {
@@ -22,11 +28,13 @@ public class SqaurePatternShape : IPatternShape
 
         for (int i = 0; i < size; i++)
         {
-           for (int j = 0; j < size; j++)
+            for (int j = 0; j < size; j++)
             {
                 _cells.Add(new Vector2I(i, j));
             }
         }
+
+        Size = size;
     }
 
     public Dictionary<Vector2I, T> RotatePattern<T>(Dictionary<Vector2I, T> pattern, int degrees)

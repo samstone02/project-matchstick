@@ -1,4 +1,5 @@
 ﻿using Godot;
+using ProjectMatchstick.Services.Generation.Steps;
 using System.Collections.Generic;
 
 namespace ProjectMatchstick.Services.Generation.PatternShapes;
@@ -6,6 +7,11 @@ namespace ProjectMatchstick.Services.Generation.PatternShapes;
 public interface IPatternShape
 {
     public IEnumerable<int> SuperimposedRotations { get; }
+
+    /// <summary>
+    /// Wether this PatternShape can close gaps without placing adjacently to existing collapsed cells.
+    /// </summary>
+    public bool CanCloseGaps { get; }
 
     public IEnumerable<Vector2I> Cells { get; }
 

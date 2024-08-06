@@ -14,8 +14,8 @@ layer_0/tile_data = PackedInt32Array(0, 65536, 0)
 
 [node name="Generator" type="Node" parent="." node_paths=PackedStringArray("Map")]
 script = ExtResource("3_kbbma")
-MaxX = 12
-MaxY = 12
+MaxX = 8
+MaxY = 8
 Seed = 123
 SampleScene = ExtResource("4_hfr4b")
 Map = NodePath("../DemoRuinsHexTileMap")

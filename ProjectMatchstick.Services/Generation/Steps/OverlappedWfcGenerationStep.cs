@@ -19,6 +19,10 @@ public class OverlappedWfcGenerationStep : IGenerationStep
 {
     private const int UNSET_TERRAIN = 0;
 
+    private Dictionary<int, bool> PartiallyCollapsedRows { get; set; }
+
+    private Dictionary<int, bool> PartiallyCollapsedColumns { get; set; }
+
     public class Pattern
     {
         public Dictionary<Vector2I, PatternCell> Cells { get; set; }
@@ -65,9 +69,9 @@ public class OverlappedWfcGenerationStep : IGenerationStep
     public class MapCell
     {
         public int Terrain { get; set; }
-        public int Chaos { get; set; }
+        //public int Chaos { get; set; }
         public bool IsCollapsed { get => Terrain != UNSET_TERRAIN; }
-        public bool IsFrontier {  get; set; }
+        //public bool IsFrontier {  get; set; }
     }
 
     public class SequenceStep
@@ -83,8 +87,6 @@ public class OverlappedWfcGenerationStep : IGenerationStep
     }
 
     public IPatternShape PatternShape { get; set; }
-    
-    public int PatternSize { get; set; }
 
     public Dictionary<Vector2I, PatternCell> Sample { get; set; }
 
@@ -96,14 +98,22 @@ public class OverlappedWfcGenerationStep : IGenerationStep
     {
         List<Pattern> uniquePatterns = ExtractUniquePatterns();
         Dictionary<Vector2I, MapCell> map = InitializeMap(tileMap, targetCells, uniquePatterns);
-        PriorityQueue<Vector2I, int> frontier = InitializeFrontier(tileMap, map, uniquePatterns); // Should the frontier be something else to prevent duplicates?
+        //PriorityQueue<Vector2I, int> frontier = InitializeFrontier(tileMap, map, uniquePatterns); // Should the frontier be something else to prevent duplicates?
 
-        var sequeunce = new Stack<SequenceStep>();
-        sequeunce.Push(new SequenceStep());
+        //var sequeunce = new Stack<SequenceStep>();
+        //sequeunce.Push(new SequenceStep());
 
-        while (frontier.Count > 0)
+        //while (frontier.Count > 0)
+        while (true)
         {
-            Vector2I candidatePosition = frontier.Dequeue();
+            //Vector2I candidatePosition = frontier.Dequeue();
+
+            (Vector2I candidatePosition, bool isFound) = GetLeastChaoticPosition(tileMap, map, uniquePatterns);
+
+            if (!isFound)
+            {
+                break;
+            }
 
             if (map.TryGetValue(candidatePosition, out var value) && value.IsCollapsed)
             {
@@ -113,35 +123,39 @@ public class OverlappedWfcGenerationStep : IGenerationStep
                 continue;
             }
             
-            (Pattern pattern, Vector2I patternPosition) = SelectPattern(tileMap, map, uniquePatterns, candidatePosition, sequeunce);
+            //(Pattern pattern, Vector2I patternPosition) = SelectPattern(tileMap, map, uniquePatterns, candidatePosition, sequeunce);
+            (Pattern pattern, Vector2I patternPosition) = SelectPattern(tileMap, map, uniquePatterns, candidatePosition);
 
             if (pattern == null)
             {
                 /* No valid pattern found at this position. Undo the last step and try a different step. */
-                UnapplyLastStep(tileMap, map, frontier, sequeunce, uniquePatterns, candidatePosition);
-                continue;
+                //UnapplyLastStep(tileMap, map, frontier, sequeunce, uniquePatterns, candidatePosition);
+                //UnapplyLastStep(tileMap, map, null, null, uniquePatterns, candidatePosition);
+                //continue;
+
+                break;
             }
 
             SequenceStep sequenceStep = ApplyPatternAt(map, pattern, patternPosition);
-            sequeunce.Push(sequenceStep);
+            //sequeunce.Push(sequenceStep);
 
             /* Expand the frontier */
-            foreach (Vector2I collapsedCell in sequenceStep.Cells)
-            {
-                foreach (Vector2I neighbor in tileMap.GetSurroundingCells(collapsedCell))
-                {
-                    if (!map.TryGetValue(neighbor, out var value2) || value2.IsCollapsed || value2.IsFrontier)
-                    {
-                        continue;
-                    }
+            //foreach (Vector2I collapsedCell in sequenceStep.Cells)
+            //{
+            //    foreach (Vector2I neighbor in tileMap.GetSurroundingCells(collapsedCell))
+            //    {
+            //        if (!map.TryGetValue(neighbor, out var value2) || value2.IsCollapsed /*|| value2.IsFrontier*/)
+            //        {
+            //            continue;
+            //        }
 
-                    int chaos = GetChaosValue(map, tileMap, neighbor, uniquePatterns);
-                    chaos = chaos == 0 ? -1 : chaos; // Enqueue with -1 to ensure these cells with no valid patterns get popped first.
+            //        int chaos = GetChaosValue(map, tileMap, neighbor, uniquePatterns);
+            //        //chaos = chaos == 0 ? -1 : chaos; // Enqueue with -1 to ensure these cells with no valid patterns get popped first.
 
-                    frontier.Enqueue(neighbor, chaos);
-                    map[neighbor].IsFrontier = true;
-                }
-            }
+            //        //frontier.Enqueue(neighbor, chaos);
+            //        //map[neighbor].IsFrontier = true;
+            //    }
+            //}
 
             /* Rendering */
             foreach (var group in sequenceStep.Cells.GroupBy(c => map[c].Terrain))
@@ -150,7 +164,34 @@ public class OverlappedWfcGenerationStep : IGenerationStep
             }
         }
 
+        GD.Print("ended");
+
         return targetCells; // TODO: Return a list of the unfilled cells
+    }
+
+    private (Vector2I, bool) GetLeastChaoticPosition(TileMap tileMap, Dictionary<Vector2I, MapCell> map, List<Pattern> uniquePatterns)
+    {
+        var leastChaoticPosition = new Vector2I();
+        var chaos = int.MaxValue;
+        var found = false;
+
+        foreach (var kv in map)
+        {
+            if (kv.Value.IsCollapsed)
+            {
+                continue;
+            }
+
+            int newChaos = GetChaosValue(map, tileMap, kv.Key, uniquePatterns);
+            if (newChaos < chaos)
+            {
+                leastChaoticPosition = kv.Key;
+                chaos = newChaos;
+                found = true;
+            }
+        }
+
+        return (leastChaoticPosition, found);
     }
 
     /// <summary>
@@ -165,7 +206,7 @@ public class OverlappedWfcGenerationStep : IGenerationStep
             map[cell] = new MapCell
             {
                 Terrain = UNSET_TERRAIN,
-                Chaos = int.MaxValue
+                // Chaos = int.MaxValue
             };
         }
 
@@ -181,7 +222,7 @@ public class OverlappedWfcGenerationStep : IGenerationStep
 
         foreach (Vector2I cell in usedCells)
         {
-            map[cell].Chaos = GetChaosValue(map, tileMap, cell, uniquePatterns);
+            //map[cell].Chaos = GetChaosValue(map, tileMap, cell, uniquePatterns);
         }
 
         return map;
@@ -201,7 +242,7 @@ public class OverlappedWfcGenerationStep : IGenerationStep
                 if (map.TryGetValue(neighbor, out var value) && !value.IsCollapsed)
                 {
                     frontier.Enqueue(neighbor, GetChaosValue(map, tileMap, neighbor, uniquePatterns));
-                    map[neighbor].IsFrontier = true;
+                    //map[neighbor].IsFrontier = true;
                 }
             }
         }
@@ -265,7 +306,7 @@ public class OverlappedWfcGenerationStep : IGenerationStep
     /// Select a single pattern at a position to apply. The pattern will overlap the least chaotic cell and overlap at least one collapsed cell.
     /// The position is the corner cell corresponding to the min X and min Y of the pattern.
     /// </summary>
-    public (Pattern, Vector2I) SelectPattern(TileMap tileMap, Dictionary<Vector2I, MapCell> map, List<Pattern> uniquePatterns, Vector2I candidatePosition, Stack<SequenceStep> sequence)
+    public (Pattern, Vector2I) SelectPattern(TileMap tileMap, Dictionary<Vector2I, MapCell> map, List<Pattern> uniquePatterns, Vector2I candidatePosition/*, Stack<SequenceStep> sequence*/)
     {
         var validPatternsAndPositions = new List<(Pattern, Vector2I)>();
 
@@ -274,12 +315,12 @@ public class OverlappedWfcGenerationStep : IGenerationStep
             foreach (Vector2I patternCellPosition in pattern.Cells.Keys)
             {
                 Vector2I patternPosition = candidatePosition - patternCellPosition;
-                bool wasPatternTriedPreviously =
-                    sequence.TryPeek(out var value)
-                    && value.TriedPatterns != null
-                    && value.TriedPatterns.Contains((pattern, patternPosition));
+                //bool wasPatternTriedPreviously =
+                //    sequence.TryPeek(out var value)
+                //    && value.TriedPatterns != null
+                //    && value.TriedPatterns.Contains((pattern, patternPosition));
 
-                if (!wasPatternTriedPreviously && CanApplyPatternAt(tileMap, map, pattern, patternPosition))
+                if (/*!wasPatternTriedPreviously &&*/ CanApplyPatternAt(tileMap, map, pattern, patternPosition))
                 {
                     validPatternsAndPositions.Add((pattern, patternPosition));
                 }
@@ -333,25 +374,51 @@ public class OverlappedWfcGenerationStep : IGenerationStep
                 empty++;
             }
 
+            /* Prevent uncloseable gaps. */
+            if (!PatternShape.CanCloseGaps && WouldCreateGap(map, pattern, patternPosition))
+            {
+                return false;
+            }
+
             /* Check if the pattern will be adjacently placed next to any existing cells. */
             /* If so, return false since placing adjacently could result in invalid cell adjacencies. */
-            //foreach (Vector2I neighborPosition in tileMap.GetSurroundingCells(cellPositionInMap))
-            //{
-            //    bool isInPattern = pattern.Cells.ContainsKey(neighborPosition - patternPosition);
+            foreach (Vector2I neighborPosition in PatternShape.GetAdjacencies(cellPositionInMap))
+            {
+                bool isInPattern = pattern.Cells.ContainsKey(neighborPosition - patternPosition);
 
-            //    if (isInPattern) 
-            //    {
-            //        continue;
-            //    }
+                if (isInPattern)
+                {
+                    continue;
+                }
 
-            //    if (map.TryGetValue(neighborPosition, out var value2) && value2.IsCollapsed && !mapCell.IsCollapsed)
-            //    {
-            //        return false;
-            //    }
-            //}
+                if (map.TryGetValue(neighborPosition, out var value2) && value2.IsCollapsed && !mapCell.IsCollapsed)
+                {
+                    return false;
+                }
+            }
         }
 
         return overlaps > 0 && empty > 0;
+    }
+
+    internal bool WouldCreateGap(Dictionary<Vector2I, MapCell> map, Pattern pattern, Vector2I patternPosition)
+    {
+        foreach (var patternCellPosition in pattern.Cells.Keys)
+        {
+            Vector2I mapCellPosition = patternCellPosition + patternPosition;
+
+            if (!map.TryGetValue(mapCellPosition, out var mapCell) || mapCell.IsCollapsed)
+            {
+                continue;
+            }
+
+            if (PartiallyCollapsedRows.ContainsKey(mapCellPosition.X) || PartiallyCollapsedColumns.ContainsKey(mapCellPosition.Y))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -376,13 +443,13 @@ public class OverlappedWfcGenerationStep : IGenerationStep
 
             if (!mapCell.IsCollapsed)
             {
-                if (mapCell.IsFrontier)
-                {
-                    frontieredCells.Add(cellPositionInMap);
-                }
+                //if (mapCell.IsFrontier)
+                //{
+                //    frontieredCells.Add(cellPositionInMap);
+                //}
 
                 map[cellPositionInMap].Terrain = pattern.Cells[cellPositionInPattern].Terrain;
-                map[cellPositionInMap].IsFrontier = false;
+                //map[cellPositionInMap].IsFrontier = false;
                 appliedCells.Add(cellPositionInMap);
             }
         }
@@ -440,17 +507,17 @@ public class OverlappedWfcGenerationStep : IGenerationStep
             map[cell].Terrain = UNSET_TERRAIN;
         }
 
-        foreach (var frontieredCell in previousStep.FrontieredCells)
-        {
-            if (!map[frontieredCell].IsFrontier)
-            {
-                frontier.Enqueue(frontieredCell, GetChaosValue(map, tileMap, candidatePosition, uniquePatterns));
-                map[frontieredCell].IsFrontier = true;
-            }
-        }
+        //foreach (var frontieredCell in previousStep.FrontieredCells)
+        //{
+        //    if (!map[frontieredCell].IsFrontier)
+        //    {
+        //        frontier.Enqueue(frontieredCell, GetChaosValue(map, tileMap, candidatePosition, uniquePatterns));
+        //        map[frontieredCell].IsFrontier = true;
+        //    }
+        //}
 
         frontier.Enqueue(candidatePosition, GetChaosValue(map, tileMap, candidatePosition, uniquePatterns));
-        map[candidatePosition].IsFrontier = true;
+        //map[candidatePosition].IsFrontier = true;
 
         tileMap.SetCellsTerrainConnect(0, new Godot.Collections.Array<Vector2I>(previousStep.Cells), 0, UNSET_TERRAIN); // TODO: Make this depend on the render mode...
 

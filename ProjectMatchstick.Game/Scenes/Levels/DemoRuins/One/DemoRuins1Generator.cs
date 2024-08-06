@@ -60,7 +60,6 @@ public partial class DemoRuins1Generator : Node
                         Terrain = sampleData.Terrain
                     };
                 }),
-                PatternSize = 2,
                 //PatternShape = new HexagonPatternShape(2),
                 PatternShape = new SqaurePatternShape(3),
                 Random = new System.Random(Seed),
