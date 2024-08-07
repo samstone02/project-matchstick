@@ -4,6 +4,7 @@ using ProjectMatchstick.Services.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using static ProjectMatchstick.Services.Generation.Steps.OverlappedWfcGenerationStep;
 
 namespace ProjectMatchstick.Services.Generation.Steps;
 
@@ -124,6 +125,7 @@ public class OverlappedWfcGenerationStep : IGenerationStep
             }
             
             //(Pattern pattern, Vector2I patternPosition) = SelectPattern(tileMap, map, uniquePatterns, candidatePosition, sequeunce);
+            // TODO: why is it picking positions in random spots?
             (Pattern pattern, Vector2I patternPosition) = SelectPattern(tileMap, map, uniquePatterns, candidatePosition);
 
             if (pattern == null)
@@ -310,19 +312,23 @@ public class OverlappedWfcGenerationStep : IGenerationStep
     {
         var validPatternsAndPositions = new List<(Pattern, Vector2I)>();
 
-        foreach (Pattern pattern in uniquePatterns)
+        foreach (Vector2I possiblePatternPosition in PatternShape.Cells.Select(c => candidatePosition - c))
         {
-            foreach (Vector2I patternCellPosition in pattern.Cells.Keys)
+            if (IsInvalidPosition(map, possiblePatternPosition))
             {
-                Vector2I patternPosition = candidatePosition - patternCellPosition;
+                continue;
+            }
+
+            foreach (Pattern pattern in uniquePatterns)
+            {
                 //bool wasPatternTriedPreviously =
                 //    sequence.TryPeek(out var value)
                 //    && value.TriedPatterns != null
                 //    && value.TriedPatterns.Contains((pattern, patternPosition));
 
-                if (/*!wasPatternTriedPreviously &&*/ CanApplyPatternAt(tileMap, map, pattern, patternPosition))
+                if (/*!wasPatternTriedPreviously &&*/ CanApplyPatternAt(tileMap, map, pattern, possiblePatternPosition))
                 {
-                    validPatternsAndPositions.Add((pattern, patternPosition));
+                    validPatternsAndPositions.Add((pattern, possiblePatternPosition));
                 }
             }
         }
@@ -332,87 +338,91 @@ public class OverlappedWfcGenerationStep : IGenerationStep
             return (null, new(0,0));
         }
 
-        /* Select a random pattern + position weighted by the pattern's frequency */
-
+        /* Select a random pattern and position weighted by the pattern's frequency. */
         int idx = RandomHelper.SelectRandomWeighted(validPatternsAndPositions, pat => pat.Item1.Frequency, Random);
-        
         return validPatternsAndPositions[idx];
     }
 
     /// <summary>
-    /// Can the pattern at the position be applied? If the pattern correctly overlaps the map (any overlap has the same cell type)
-    /// and the pattern will not be placed adjacent to any existing cells then true.
+    /// Will a pattern applied at this position produce uncloseable gaps or place adjacently to collapsed terrain?
     /// </summary>
-    public bool CanApplyPatternAt(TileMap tileMap, Dictionary<Vector2I, MapCell> map, Pattern pattern, Vector2I patternPosition)
+    public bool IsInvalidPosition(Dictionary<Vector2I, MapCell> map, Vector2I patternPosition)
     {
-        int overlaps = 0;
-        int empty = 0;
+        int numEmptyCells = 0;
 
-        foreach (Vector2I cellPositionInPattern in pattern.Cells.Keys)
+        foreach (Vector2I cellMapPosition in PatternShape.Cells.Select(c => c + patternPosition))
         {
-            Vector2I cellPositionInMap = patternPosition + cellPositionInPattern;
-            bool isInMap = map.TryGetValue(cellPositionInMap, out var mapCell);
-
-            if (!isInMap)
+            if (map.TryGetValue(cellMapPosition, out MapCell mapCell) && !mapCell.IsCollapsed)
             {
-                continue;
+                numEmptyCells++;
             }
 
-            if (mapCell.IsCollapsed)
+            /* Prevent uncloseable gaps. Only applies for 2x2 square patterns. */
+            if (!PatternShape.CanCloseGaps && WouldCreateGap(map, cellMapPosition))
             {
-                if (mapCell.Terrain == pattern.Cells[cellPositionInPattern].Terrain)
-                {
-                    overlaps++;
-                }
-                else
-                {
-                    return false;
-                }
-            }
-            else
-            {
-                empty++;
-            }
-
-            /* Prevent uncloseable gaps. */
-            if (!PatternShape.CanCloseGaps && WouldCreateGap(map, pattern, patternPosition))
-            {
-                return false;
+                return true;
             }
 
             /* Check if the pattern will be adjacently placed next to any existing cells. */
             /* If so, return false since placing adjacently could result in invalid cell adjacencies. */
-            foreach (Vector2I neighborPosition in PatternShape.GetAdjacencies(cellPositionInMap))
+            /* This is the reason that 2x2 square patterns can produce uncloseable gaps - can only place them adjacently to close gaps. */
+            foreach (Vector2I neighborPosition in PatternShape.GetAdjacencies(cellMapPosition))
             {
-                bool isInPattern = pattern.Cells.ContainsKey(neighborPosition - patternPosition);
+                bool isInPattern = PatternShape.Cells.Contains(neighborPosition - patternPosition);
 
                 if (isInPattern)
                 {
                     continue;
                 }
 
-                if (map.TryGetValue(neighborPosition, out var value2) && value2.IsCollapsed && !mapCell.IsCollapsed)
+                if (map.TryGetValue(neighborPosition, out var value2) && value2.IsCollapsed && map[cellMapPosition].IsCollapsed)
+                {
+                    return true;
+                }
+            }
+        }
+
+        return numEmptyCells == 0;
+    }
+
+    /// <summary>
+    /// Can the pattern at the position be applied? If the pattern correctly overlaps the map (any overlap has the same cell type)
+    /// </summary>
+    public bool CanApplyPatternAt(TileMap tileMap, Dictionary<Vector2I, MapCell> map, Pattern pattern, Vector2I patternPosition)
+    {
+        foreach (Vector2I cellPatternPosition in pattern.Cells.Keys)
+        {
+            Vector2I cellMapPosition = patternPosition + cellPatternPosition;
+
+            if (!map.TryGetValue(cellMapPosition, out var mapCell))
+            {
+                continue;
+            }
+
+            if (mapCell.IsCollapsed)
+            {
+                if (mapCell.Terrain != pattern.Cells[cellPatternPosition].Terrain)
                 {
                     return false;
                 }
             }
         }
 
-        return overlaps > 0 && empty > 0;
+        return true;
     }
 
-    internal bool WouldCreateGap(Dictionary<Vector2I, MapCell> map, Pattern pattern, Vector2I patternPosition)
+    internal bool WouldCreateGap(Dictionary<Vector2I, MapCell> map, Vector2I patternPosition)
     {
-        foreach (var patternCellPosition in pattern.Cells.Keys)
+        foreach (var patternCellPosition in PatternShape.Cells)
         {
-            Vector2I mapCellPosition = patternCellPosition + patternPosition;
+            Vector2I cellMapPosition = patternCellPosition + patternPosition;
 
-            if (!map.TryGetValue(mapCellPosition, out var mapCell) || mapCell.IsCollapsed)
+            if (!map.TryGetValue(cellMapPosition, out var mapCell) || mapCell.IsCollapsed)
             {
                 continue;
             }
 
-            if (PartiallyCollapsedRows.ContainsKey(mapCellPosition.X) || PartiallyCollapsedColumns.ContainsKey(mapCellPosition.Y))
+            if (PartiallyCollapsedRows.ContainsKey(cellMapPosition.X) || PartiallyCollapsedColumns.ContainsKey(cellMapPosition.Y))
             {
                 return true;
             }
